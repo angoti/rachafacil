@@ -289,6 +289,9 @@ body {
     max-width: 500px;
     margin: 2rem auto;
     box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
 }
 
 .modal-header {
@@ -297,6 +300,7 @@ body {
     align-items: center;
     padding: 1.5rem;
     border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
 }
 
 .modal-header h2 {
@@ -315,6 +319,8 @@ body {
 /* Form */
 form {
     padding: 1.5rem;
+    overflow-y: auto;
+    flex: 1;
 }
 
 .form-group {
