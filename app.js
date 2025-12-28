@@ -74,6 +74,7 @@ let pessoas = [];
 let despesas = [];
 let unsubscribePessoas = null;
 let unsubscribeDespesas = null;
+let currentImageFile = null; // Armazenar imagem atual para OCR
 
 // Inicialização
 document.addEventListener('DOMContentLoaded', () => {
@@ -401,6 +402,9 @@ function inicializarEventos() {
         document.getElementById('fotoRecibo').click();
     });
     
+    // Botão OCR
+    document.getElementById('btnExtrairValor').addEventListener('click', extrairValorComOCR);
+    
     // Fechar modal clicando fora
     document.getElementById('modalDespesa').addEventListener('click', (e) => {
         if (e.target.id === 'modalDespesa') fecharModalDespesa();
@@ -492,26 +496,204 @@ function fecharModalDespesa() {
     document.getElementById('modalDespesa').classList.remove('active');
     document.getElementById('formDespesa').reset();
     document.getElementById('previewFoto').innerHTML = '';
+    document.getElementById('btnExtrairValor').style.display = 'none';
+    document.getElementById('ocrStatus').style.display = 'none';
+    document.getElementById('ocrStatus').innerHTML = '';
+    currentImageFile = null;
+}
+
+// Extrair valor do recibo usando OCR
+async function extrairValorComOCR() {
+    if (!currentImageFile) {
+        alert('Nenhuma imagem selecionada');
+        return;
+    }
+    
+    const btnOcr = document.getElementById('btnExtrairValor');
+    const ocrStatus = document.getElementById('ocrStatus');
+    const campoValor = document.getElementById('valor');
+    
+    try {
+        // Desabilitar botão e mostrar status
+        btnOcr.disabled = true;
+        btnOcr.textContent = '⏳ Processando...';
+        ocrStatus.style.display = 'block';
+        ocrStatus.innerHTML = `
+            <div style="padding: 1rem; background: var(--bg); border-radius: 8px; text-align: center;">
+                <div style="font-size: 0.9rem; color: var(--text);">
+                    Analisando recibo... Isso pode levar alguns segundos.
+                </div>
+            </div>
+        `;
+        
+        console.log('Iniciando OCR...');
+        
+        // Processar imagem com Tesseract
+        const result = await Tesseract.recognize(
+            currentImageFile,
+            'por', // Português
+            {
+                logger: (m) => {
+                    if (m.status === 'recognizing text') {
+                        const progress = Math.round(m.progress * 100);
+                        ocrStatus.innerHTML = `
+                            <div style="padding: 1rem; background: var(--bg); border-radius: 8px;">
+                                <div style="font-size: 0.9rem; color: var(--text); margin-bottom: 0.5rem;">
+                                    Analisando: ${progress}%
+                                </div>
+                                <div style="background: var(--border); height: 8px; border-radius: 4px; overflow: hidden;">
+                                    <div style="background: var(--primary); height: 100%; width: ${progress}%; transition: width 0.3s;"></div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+            }
+        );
+        
+        console.log('OCR concluído:', result.data.text);
+        
+        // Extrair valores do texto
+        const texto = result.data.text;
+        const valores = extrairValoresDoTexto(texto);
+        
+        if (valores.length > 0) {
+            // Se encontrou múltiplos valores, mostrar opções
+            if (valores.length > 1) {
+                ocrStatus.innerHTML = `
+                    <div style="padding: 1rem; background: var(--bg); border-radius: 8px;">
+                        <div style="font-size: 0.9rem; font-weight: 500; margin-bottom: 0.75rem;">
+                            Valores encontrados (clique para usar):
+                        </div>
+                        ${valores.map((v, i) => `
+                            <button type="button" onclick="selecionarValor(${v})" 
+                                    style="display: block; width: 100%; padding: 0.75rem; margin-bottom: 0.5rem; 
+                                           background: white; border: 2px solid var(--border); border-radius: 8px; 
+                                           cursor: pointer; font-size: 1.1rem; font-weight: 600; color: var(--primary);">
+                                R$ ${v.toFixed(2)}
+                            </button>
+                        `).join('')}
+                    </div>
+                `;
+            } else {
+                // Apenas um valor, usar automaticamente
+                const valor = valores[0];
+                campoValor.value = valor.toFixed(2);
+                campoValor.focus();
+                ocrStatus.innerHTML = `
+                    <div style="padding: 1rem; background: var(--secondary); color: white; border-radius: 8px; text-align: center;">
+                        ✓ Valor extraído: R$ ${valor.toFixed(2)}
+                    </div>
+                `;
+                setTimeout(() => {
+                    ocrStatus.style.display = 'none';
+                }, 3000);
+            }
+        } else {
+            ocrStatus.innerHTML = `
+                <div style="padding: 1rem; background: #FEF3C7; border: 2px solid #F59E0B; border-radius: 8px; text-align: center;">
+                    <div style="color: #92400E; font-size: 0.9rem;">
+                        ⚠️ Nenhum valor encontrado no recibo. Digite manualmente.
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Reabilitar botão
+        btnOcr.disabled = false;
+        btnOcr.textContent = '🔍 Extrair valor do recibo';
+        
+    } catch (error) {
+        console.error('Erro no OCR:', error);
+        ocrStatus.innerHTML = `
+            <div style="padding: 1rem; background: var(--danger); color: white; border-radius: 8px; text-align: center;">
+                ❌ Erro ao processar imagem. Tente novamente ou digite manualmente.
+            </div>
+        `;
+        btnOcr.disabled = false;
+        btnOcr.textContent = '🔍 Extrair valor do recibo';
+    }
+}
+
+// Extrair valores numéricos do texto OCR
+function extrairValoresDoTexto(texto) {
+    console.log('Texto extraído:', texto);
+    
+    // Patterns para detectar valores em reais
+    const patterns = [
+        /R\$?\s*(\d{1,3}(?:[.,]\d{3})*[.,]\d{2})/gi,  // R$ 1.234,56 ou R$1234.56
+        /(\d{1,3}(?:[.,]\d{3})*[.,]\d{2})/g,           // 1.234,56 ou 1234.56
+        /total[:\s]*(\d+[.,]\d{2})/gi,                 // Total: 123.45
+        /valor[:\s]*(\d+[.,]\d{2})/gi,                 // Valor: 123.45
+    ];
+    
+    const valoresEncontrados = new Set();
+    
+    patterns.forEach(pattern => {
+        const matches = texto.matchAll(pattern);
+        for (const match of matches) {
+            let valorStr = match[1] || match[0];
+            // Normalizar: trocar vírgula por ponto e remover pontos de milhar
+            valorStr = valorStr.replace(/\./g, '').replace(',', '.');
+            const valor = parseFloat(valorStr);
+            
+            // Validar valor (entre 0.01 e 999999)
+            if (!isNaN(valor) && valor > 0 && valor < 1000000) {
+                valoresEncontrados.add(valor);
+            }
+        }
+    });
+    
+    // Ordenar valores (maior primeiro, geralmente é o total)
+    return Array.from(valoresEncontrados).sort((a, b) => b - a);
+}
+
+// Selecionar valor da lista de opções
+function selecionarValor(valor) {
+    const campoValor = document.getElementById('valor');
+    const ocrStatus = document.getElementById('ocrStatus');
+    
+    campoValor.value = valor.toFixed(2);
+    campoValor.focus();
+    
+    ocrStatus.innerHTML = `
+        <div style="padding: 1rem; background: var(--secondary); color: white; border-radius: 8px; text-align: center;">
+            ✓ Valor selecionado: R$ ${valor.toFixed(2)}
+        </div>
+    `;
+    
+    setTimeout(() => {
+        ocrStatus.style.display = 'none';
+    }, 2000);
 }
 
 // Preview da foto ou arquivo
 function previewArquivo(e) {
     const file = e.target.files[0];
     const preview = document.getElementById('previewFoto');
+    const btnOcr = document.getElementById('btnExtrairValor');
+    const ocrStatus = document.getElementById('ocrStatus');
+    
+    // Limpar status anterior
+    ocrStatus.style.display = 'none';
+    ocrStatus.innerHTML = '';
     
     if (file) {
+        currentImageFile = file; // Armazenar para OCR
+        
         const reader = new FileReader();
         reader.onload = (e) => {
             const fileType = file.type;
             
             if (fileType.startsWith('image/')) {
-                // É uma imagem
+                // É uma imagem - mostrar botão OCR
                 preview.innerHTML = `
-                    <img src="${e.target.result}" alt="Preview do recibo">
+                    <img src="${e.target.result}" alt="Preview do recibo" id="imagemRecibo">
                     <div style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-light);">
                         ${file.name} (${(file.size / 1024).toFixed(1)} KB)
                     </div>
                 `;
+                btnOcr.style.display = 'block';
             } else if (fileType === 'application/pdf') {
                 // É um PDF
                 preview.innerHTML = `
@@ -523,6 +705,8 @@ function previewArquivo(e) {
                         </div>
                     </div>
                 `;
+                btnOcr.style.display = 'none';
+                currentImageFile = null;
             } else {
                 // Outro tipo de arquivo
                 preview.innerHTML = `
@@ -534,9 +718,14 @@ function previewArquivo(e) {
                         </div>
                     </div>
                 `;
+                btnOcr.style.display = 'none';
+                currentImageFile = null;
             }
         };
         reader.readAsDataURL(file);
+    } else {
+        btnOcr.style.display = 'none';
+        currentImageFile = null;
     }
 }
 
@@ -862,6 +1051,7 @@ window.abrirArquivo = abrirArquivo;
 window.editarPessoa = editarPessoa;
 window.salvarEdicaoPessoa = salvarEdicaoPessoa;
 window.cancelarEdicaoPessoa = cancelarEdicaoPessoa;
+window.selecionarValor = selecionarValor;
 
 // Editar pessoa
 function editarPessoa(firebaseId) {
