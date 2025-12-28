@@ -471,8 +471,21 @@ function renderizarArquivo(despesa) {
 // Abrir arquivo em nova aba ou download
 function abrirArquivo(base64, tipo, nome) {
     if (tipo.startsWith('image/')) {
-        // Imagem abre em nova aba
-        window.open(base64, '_blank');
+        // Imagem abre no lightbox
+        const lightbox = document.getElementById('lightbox');
+        const lightboxImg = document.getElementById('lightbox-img');
+        const caption = document.getElementById('lightbox-caption');
+        
+        lightbox.classList.add('active');
+        lightboxImg.src = base64;
+        caption.textContent = nome;
+        
+        // Fechar lightbox ao clicar no X ou fora da imagem
+        lightbox.onclick = (e) => {
+            if (e.target === lightbox || e.target.classList.contains('lightbox-close')) {
+                lightbox.classList.remove('active');
+            }
+        };
     } else {
         // PDF e outros fazem download
         const link = document.createElement('a');
