@@ -4,11 +4,19 @@ import {
     getFirestore, 
     collection, 
     addDoc, 
-    deleteDoc, 
+    deleteDoc,
+    updateDoc,
     doc, 
     onSnapshot,
     enableIndexedDbPersistence 
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import {
+    getAuth,
+    GoogleAuthProvider,
+    signInWithPopup,
+    onAuthStateChanged,
+    signOut
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDj1sXtBjPR1bHi-5bocY6hivgPriIaZxY",
@@ -22,6 +30,11 @@ const firebaseConfig = {
 // Inicializar Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth(app);
+const googleProvider = new GoogleAuthProvider();
+
+// Estado do usuário atual
+let currentUser = null;
 
 // Habilitar persistência offline
 enableIndexedDbPersistence(db).catch((err) => {
@@ -40,10 +53,93 @@ let unsubscribeDespesas = null;
 
 // Inicialização
 document.addEventListener('DOMContentLoaded', () => {
-    migrarDadosLocalStorage();
-    inicializarListeners();
+    inicializarAuth();
     inicializarEventos();
 });
+
+// Inicializar autenticação
+function inicializarAuth() {
+    const btnGoogleLogin = document.getElementById('btnGoogleLogin');
+    const btnLogout = document.getElementById('btnLogout');
+    
+    // Listener de login
+    btnGoogleLogin.addEventListener('click', loginComGoogle);
+    
+    // Listener de logout
+    btnLogout.addEventListener('click', logout);
+    
+    // Observar mudanças no estado de autenticação
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            // Usuário logado
+            currentUser = user;
+            mostrarApp();
+            migrarDadosLocalStorage();
+            inicializarListeners();
+        } else {
+            // Usuário deslogado
+            currentUser = null;
+            mostrarLogin();
+            limparListeners();
+        }
+    });
+}
+
+// Login com Google
+async function loginComGoogle() {
+    try {
+        const result = await signInWithPopup(auth, googleProvider);
+        currentUser = result.user;
+        console.log('Login realizado:', currentUser.displayName);
+    } catch (error) {
+        console.error('Erro no login:', error);
+        alert('Erro ao fazer login. Tente novamente.');
+    }
+}
+
+// Logout
+async function logout() {
+    if (!confirm('Deseja sair?')) return;
+    
+    try {
+        await signOut(auth);
+        console.log('Logout realizado');
+    } catch (error) {
+        console.error('Erro no logout:', error);
+        alert('Erro ao sair. Tente novamente.');
+    }
+}
+
+// Mostrar tela de login
+function mostrarLogin() {
+    document.getElementById('loginScreen').style.display = 'flex';
+    document.getElementById('appContainer').style.display = 'none';
+}
+
+// Mostrar app
+function mostrarApp() {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('appContainer').style.display = 'block';
+    
+    // Atualizar foto do usuário
+    if (currentUser && currentUser.photoURL) {
+        document.getElementById('userPhoto').src = currentUser.photoURL;
+    }
+}
+
+// Limpar listeners do Firebase
+function limparListeners() {
+    if (unsubscribePessoas) {
+        unsubscribePessoas();
+        unsubscribePessoas = null;
+    }
+    if (unsubscribeDespesas) {
+        unsubscribeDespesas();
+        unsubscribeDespesas = null;
+    }
+    pessoas = [];
+    despesas = [];
+}
 
 // Migrar dados do localStorage para Firebase (apenas uma vez)
 async function migrarDadosLocalStorage() {
@@ -371,12 +467,41 @@ function renderizarPessoas() {
         return;
     }
     
-    lista.innerHTML = pessoas.map(pessoa => `
-        <div class="pessoa-item">
-            <span class="pessoa-nome">${pessoa.nome}</span>
-            <button class="btn-remover" onclick="removerPessoa('${pessoa.firebaseId}')">Remover</button>
-        </div>
-    `).join('');
+    lista.innerHTML = pessoas.map(pessoa => {
+        // Pegar primeira letra do nome para o avatar
+        const inicial = pessoa.nome.charAt(0).toUpperCase();
+        
+        // Contar quantas despesas a pessoa está envolvida
+        const despesasCount = despesas.filter(d => 
+            d.pagadorId === pessoa.id || d.pessoasSelecionadas.includes(pessoa.id)
+        ).length;
+        
+        return `
+            <div class="pessoa-item" id="pessoa-${pessoa.firebaseId}">
+                <div class="pessoa-item-content">
+                    <div class="pessoa-avatar">${inicial}</div>
+                    <div class="pessoa-info">
+                        <span class="pessoa-nome" id="nome-${pessoa.firebaseId}">${pessoa.nome}</span>
+                        <input type="text" class="pessoa-nome-input" id="input-${pessoa.firebaseId}" 
+                               value="${pessoa.nome}" style="display: none;">
+                        ${despesasCount > 0 ? `<div class="pessoa-stats">${despesasCount} despesa${despesasCount > 1 ? 's' : ''}</div>` : ''}
+                    </div>
+                </div>
+                <div class="pessoa-actions">
+                    <button class="btn-icon edit" onclick="editarPessoa('${pessoa.firebaseId}')" id="btn-edit-${pessoa.firebaseId}" title="Editar">
+                        ✏️
+                    </button>
+                    <button class="btn-icon save" onclick="salvarEdicaoPessoa('${pessoa.firebaseId}')" id="btn-save-${pessoa.firebaseId}" style="display: none;" title="Salvar">
+                        ✓
+                    </button>
+                    <button class="btn-icon cancel" onclick="cancelarEdicaoPessoa('${pessoa.firebaseId}')" id="btn-cancel-${pessoa.firebaseId}" style="display: none;" title="Cancelar">
+                        ✕
+                    </button>
+                    <button class="btn-remover" onclick="removerPessoa('${pessoa.firebaseId}')">Remover</button>
+                </div>
+            </div>
+        `;
+    }).join('');
 }
 
 // Renderizar lista de despesas
@@ -445,118 +570,4 @@ function renderizarArquivo(despesa) {
         return `
             <div class="despesa-foto" onclick="abrirArquivo('${arquivo}', '${tipo}', '${nome}')" style="cursor: pointer;">
                 <div style="padding: 1rem; background: var(--bg); border-radius: 8px; text-align: center;">
-                    <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">📄</div>
-                    <div style="font-weight: 500; font-size: 0.9rem;">${nome}</div>
-                    <div style="font-size: 0.75rem; color: var(--text-light); margin-top: 0.25rem;">
-                        Clique para visualizar
-                    </div>
-                </div>
-            </div>
-        `;
-    } else {
-        return `
-            <div class="despesa-foto" onclick="abrirArquivo('${arquivo}', '${tipo}', '${nome}')" style="cursor: pointer;">
-                <div style="padding: 1rem; background: var(--bg); border-radius: 8px; text-align: center;">
-                    <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">📎</div>
-                    <div style="font-weight: 500; font-size: 0.9rem;">${nome}</div>
-                    <div style="font-size: 0.75rem; color: var(--text-light); margin-top: 0.25rem;">
-                        Clique para abrir
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-}
-
-// Abrir arquivo em nova aba ou download
-function abrirArquivo(base64, tipo, nome) {
-    if (tipo.startsWith('image/')) {
-        // Imagem abre no lightbox
-        const lightbox = document.getElementById('lightbox');
-        const lightboxImg = document.getElementById('lightbox-img');
-        const caption = document.getElementById('lightbox-caption');
-        
-        lightbox.classList.add('active');
-        lightboxImg.src = base64;
-        caption.textContent = nome;
-        
-        // Fechar lightbox ao clicar no X ou fora da imagem
-        lightbox.onclick = (e) => {
-            if (e.target === lightbox || e.target.classList.contains('lightbox-close')) {
-                lightbox.classList.remove('active');
-            }
-        };
-    } else {
-        // PDF e outros fazem download
-        const link = document.createElement('a');
-        link.href = base64;
-        link.download = nome;
-        link.click();
-    }
-}
-
-// Renderizar saldos
-function renderizarSaldos() {
-    const lista = document.getElementById('listaSaldos');
-    
-    if (despesas.length === 0) {
-        lista.innerHTML = '<p class="empty-state">Cadastre despesas para ver os saldos</p>';
-        return;
-    }
-    
-    // Calcular saldos
-    const saldos = {};
-    pessoas.forEach(pessoa => {
-        saldos[pessoa.id] = { nome: pessoa.nome, valor: 0 };
-    });
-    
-    despesas.forEach(despesa => {
-        // Quem pagou recebe o valor total
-        if (saldos[despesa.pagadorId]) {
-            saldos[despesa.pagadorId].valor += despesa.valor;
-        }
-        
-        // Cada participante deve sua parte
-        despesa.pessoasSelecionadas.forEach(pessoaId => {
-            if (saldos[pessoaId]) {
-                saldos[pessoaId].valor -= despesa.valorPorPessoa;
-            }
-        });
-    });
-    
-    // Renderizar
-    const saldosArray = Object.values(saldos).sort((a, b) => b.valor - a.valor);
-    
-    lista.innerHTML = saldosArray.map(saldo => {
-        const isPositivo = saldo.valor > 0.01;
-        const isNegativo = saldo.valor < -0.01;
-        const classe = isPositivo ? 'saldo-positivo' : isNegativo ? 'saldo-negativo' : '';
-        const classeValor = isPositivo ? 'positivo' : isNegativo ? 'negativo' : '';
-        
-        let texto = '';
-        if (isPositivo) {
-            texto = 'Deve receber';
-        } else if (isNegativo) {
-            texto = 'Deve pagar';
-        } else {
-            texto = 'Está em dia';
-        }
-        
-        return `
-            <div class="saldo-item ${classe}">
-                <div style="font-weight: 600; font-size: 1.1rem;">${saldo.nome}</div>
-                <div style="color: var(--text-light); font-size: 0.9rem; margin-top: 0.25rem;">
-                    ${texto}
-                </div>
-                <div class="saldo-valor ${classeValor}">
-                    R$ ${Math.abs(saldo.valor).toFixed(2)}
-                </div>
-            </div>
-        `;
-    }).join('');
-}
-
-// Tornar funções globais para onclick no HTML
-window.removerPessoa = removerPessoa;
-window.removerDespesa = removerDespesa;
-window.abrirArquivo = abrirArquivo;
+                    <d
