@@ -574,4 +574,286 @@ function renderizarPessoas() {
         const inicial = pessoa.nome.charAt(0).toUpperCase();
         
         // Contar quantas despesas a pessoa está envolvida
-        const despesasCount = despesas
+        const despesasCount = despesas.filter(d => 
+            d.pagadorId === pessoa.id || d.pessoasSelecionadas.includes(pessoa.id)
+        ).length;
+        
+        return `
+            <div class="pessoa-item" id="pessoa-${pessoa.firebaseId}">
+                <div class="pessoa-item-content">
+                    <div class="pessoa-avatar">${inicial}</div>
+                    <div class="pessoa-info">
+                        <span class="pessoa-nome" id="nome-${pessoa.firebaseId}">${pessoa.nome}</span>
+                        <input type="text" class="pessoa-nome-input" id="input-${pessoa.firebaseId}" 
+                               value="${pessoa.nome}" style="display: none;">
+                        ${despesasCount > 0 ? `<div class="pessoa-stats">${despesasCount} despesa${despesasCount > 1 ? 's' : ''}</div>` : ''}
+                    </div>
+                </div>
+                <div class="pessoa-actions">
+                    <button class="btn-icon edit" onclick="editarPessoa('${pessoa.firebaseId}')" id="btn-edit-${pessoa.firebaseId}" title="Editar">
+                        ✏️
+                    </button>
+                    <button class="btn-icon save" onclick="salvarEdicaoPessoa('${pessoa.firebaseId}')" id="btn-save-${pessoa.firebaseId}" style="display: none;" title="Salvar">
+                        ✓
+                    </button>
+                    <button class="btn-icon cancel" onclick="cancelarEdicaoPessoa('${pessoa.firebaseId}')" id="btn-cancel-${pessoa.firebaseId}" style="display: none;" title="Cancelar">
+                        ✕
+                    </button>
+                    <button class="btn-remover" onclick="removerPessoa('${pessoa.firebaseId}')">Remover</button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// Renderizar lista de despesas
+function renderizarDespesas() {
+    const lista = document.getElementById('listaDespesas');
+    
+    if (despesas.length === 0) {
+        lista.innerHTML = '<p class="empty-state">Nenhuma despesa cadastrada ainda</p>';
+        return;
+    }
+    
+    // Ordenar despesas por data (mais recente primeiro)
+    const despesasOrdenadas = [...despesas].sort((a, b) => 
+        new Date(b.data) - new Date(a.data)
+    );
+    
+    lista.innerHTML = despesasOrdenadas.map(despesa => {
+        const pagador = pessoas.find(p => p.id === despesa.pagadorId);
+        const participantes = despesa.pessoasSelecionadas.map(id => 
+            pessoas.find(p => p.id === id)?.nome
+        ).filter(Boolean);
+        
+        const data = new Date(despesa.data);
+        const dataFormatada = data.toLocaleDateString('pt-BR');
+        
+        return `
+            <div class="despesa-card">
+                <div class="despesa-header">
+                    <span class="despesa-titulo">${despesa.descricao}</span>
+                    <span class="despesa-valor">R$ ${despesa.valor.toFixed(2)}</span>
+                </div>
+                <div class="despesa-info">
+                    ${dataFormatada} • Pago por ${pagador?.nome || 'Desconhecido'}
+                </div>
+                <div class="despesa-info">
+                    R$ ${despesa.valorPorPessoa.toFixed(2)} por pessoa
+                </div>
+                <div class="despesa-divisao">
+                    ${participantes.map(nome => `<span class="tag">${nome}</span>`).join('')}
+                </div>
+                ${despesa.arquivo ? renderizarArquivo(despesa) : ''}
+                <div style="margin-top: 0.75rem;">
+                    <button class="btn-remover" onclick="removerDespesa('${despesa.firebaseId}')">Excluir</button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// Renderizar arquivo anexado (imagem ou PDF)
+function renderizarArquivo(despesa) {
+    // Compatibilidade com versão antiga que usava 'foto'
+    const arquivo = despesa.arquivo || despesa.foto;
+    const tipo = despesa.arquivoTipo || 'image/jpeg';
+    const nome = despesa.arquivoNome || 'recibo.jpg';
+    
+    if (!arquivo) return '';
+    
+    if (tipo.startsWith('image/')) {
+        return `
+            <div class="despesa-foto">
+                <img src="${arquivo}" alt="Recibo" onclick="abrirArquivo('${arquivo}', '${tipo}', '${nome}')">
+            </div>
+        `;
+    } else if (tipo === 'application/pdf') {
+        return `
+            <div class="despesa-foto" onclick="abrirArquivo('${arquivo}', '${tipo}', '${nome}')" style="cursor: pointer;">
+                <div style="padding: 1rem; background: var(--bg); border-radius: 8px; text-align: center;">
+                    <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">📄</div>
+                    <div style="font-weight: 500; font-size: 0.9rem;">${nome}</div>
+                    <div style="font-size: 0.75rem; color: var(--text-light); margin-top: 0.25rem;">
+                        Clique para visualizar
+                    </div>
+                </div>
+            </div>
+        `;
+    } else {
+        return `
+            <div class="despesa-foto" onclick="abrirArquivo('${arquivo}', '${tipo}', '${nome}')" style="cursor: pointer;">
+                <div style="padding: 1rem; background: var(--bg); border-radius: 8px; text-align: center;">
+                    <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">📎</div>
+                    <div style="font-weight: 500; font-size: 0.9rem;">${nome}</div>
+                    <div style="font-size: 0.75rem; color: var(--text-light); margin-top: 0.25rem;">
+                        Clique para abrir
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+}
+
+// Abrir arquivo em nova aba ou download
+function abrirArquivo(base64, tipo, nome) {
+    if (tipo.startsWith('image/')) {
+        // Imagem abre no lightbox
+        const lightbox = document.getElementById('lightbox');
+        const lightboxImg = document.getElementById('lightbox-img');
+        const caption = document.getElementById('lightbox-caption');
+        
+        lightbox.classList.add('active');
+        lightboxImg.src = base64;
+        caption.textContent = nome;
+        
+        // Fechar lightbox ao clicar no X ou fora da imagem
+        lightbox.onclick = (e) => {
+            if (e.target === lightbox || e.target.classList.contains('lightbox-close')) {
+                lightbox.classList.remove('active');
+            }
+        };
+    } else {
+        // PDF e outros fazem download
+        const link = document.createElement('a');
+        link.href = base64;
+        link.download = nome;
+        link.click();
+    }
+}
+
+// Renderizar saldos
+function renderizarSaldos() {
+    const lista = document.getElementById('listaSaldos');
+    
+    if (despesas.length === 0) {
+        lista.innerHTML = '<p class="empty-state">Cadastre despesas para ver os saldos</p>';
+        return;
+    }
+    
+    // Calcular saldos
+    const saldos = {};
+    pessoas.forEach(pessoa => {
+        saldos[pessoa.id] = { nome: pessoa.nome, valor: 0 };
+    });
+    
+    despesas.forEach(despesa => {
+        // Quem pagou recebe o valor total
+        if (saldos[despesa.pagadorId]) {
+            saldos[despesa.pagadorId].valor += despesa.valor;
+        }
+        
+        // Cada participante deve sua parte
+        despesa.pessoasSelecionadas.forEach(pessoaId => {
+            if (saldos[pessoaId]) {
+                saldos[pessoaId].valor -= despesa.valorPorPessoa;
+            }
+        });
+    });
+    
+    // Renderizar
+    const saldosArray = Object.values(saldos).sort((a, b) => b.valor - a.valor);
+    
+    lista.innerHTML = saldosArray.map(saldo => {
+        const isPositivo = saldo.valor > 0.01;
+        const isNegativo = saldo.valor < -0.01;
+        const classe = isPositivo ? 'saldo-positivo' : isNegativo ? 'saldo-negativo' : '';
+        const classeValor = isPositivo ? 'positivo' : isNegativo ? 'negativo' : '';
+        
+        let texto = '';
+        if (isPositivo) {
+            texto = 'Deve receber';
+        } else if (isNegativo) {
+            texto = 'Deve pagar';
+        } else {
+            texto = 'Está em dia';
+        }
+        
+        return `
+            <div class="saldo-item ${classe}">
+                <div style="font-weight: 600; font-size: 1.1rem;">${saldo.nome}</div>
+                <div style="color: var(--text-light); font-size: 0.9rem; margin-top: 0.25rem;">
+                    ${texto}
+                </div>
+                <div class="saldo-valor ${classeValor}">
+                    R$ ${Math.abs(saldo.valor).toFixed(2)}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// Tornar funções globais para onclick no HTML
+window.removerPessoa = removerPessoa;
+window.removerDespesa = removerDespesa;
+window.abrirArquivo = abrirArquivo;
+window.editarPessoa = editarPessoa;
+window.salvarEdicaoPessoa = salvarEdicaoPessoa;
+window.cancelarEdicaoPessoa = cancelarEdicaoPessoa;
+
+// Editar pessoa
+function editarPessoa(firebaseId) {
+    const nomeSpan = document.getElementById(`nome-${firebaseId}`);
+    const nomeInput = document.getElementById(`input-${firebaseId}`);
+    const btnEdit = document.getElementById(`btn-edit-${firebaseId}`);
+    const btnSave = document.getElementById(`btn-save-${firebaseId}`);
+    const btnCancel = document.getElementById(`btn-cancel-${firebaseId}`);
+    
+    nomeSpan.style.display = 'none';
+    nomeInput.style.display = 'block';
+    btnEdit.style.display = 'none';
+    btnSave.style.display = 'block';
+    btnCancel.style.display = 'block';
+    
+    nomeInput.focus();
+    nomeInput.select();
+}
+
+// Salvar edição de pessoa
+async function salvarEdicaoPessoa(firebaseId) {
+    const nomeInput = document.getElementById(`input-${firebaseId}`);
+    const novoNome = nomeInput.value.trim();
+    
+    if (!novoNome) {
+        alert('Digite um nome válido');
+        return;
+    }
+    
+    const pessoa = pessoas.find(p => p.firebaseId === firebaseId);
+    if (!pessoa) return;
+    
+    // Verificar se já existe outra pessoa com esse nome
+    if (pessoas.find(p => p.firebaseId !== firebaseId && p.nome.toLowerCase() === novoNome.toLowerCase())) {
+        alert('Já existe uma pessoa com esse nome');
+        return;
+    }
+    
+    try {
+        await updateDoc(doc(db, 'pessoas', firebaseId), {
+            nome: novoNome
+        });
+        cancelarEdicaoPessoa(firebaseId);
+    } catch (error) {
+        console.error('Erro ao atualizar pessoa:', error);
+        alert('Erro ao atualizar pessoa. Tente novamente.');
+    }
+}
+
+// Cancelar edição de pessoa
+function cancelarEdicaoPessoa(firebaseId) {
+    const pessoa = pessoas.find(p => p.firebaseId === firebaseId);
+    if (!pessoa) return;
+    
+    const nomeSpan = document.getElementById(`nome-${firebaseId}`);
+    const nomeInput = document.getElementById(`input-${firebaseId}`);
+    const btnEdit = document.getElementById(`btn-edit-${firebaseId}`);
+    const btnSave = document.getElementById(`btn-save-${firebaseId}`);
+    const btnCancel = document.getElementById(`btn-cancel-${firebaseId}`);
+    
+    nomeInput.value = pessoa.nome;
+    nomeSpan.style.display = 'block';
+    nomeInput.style.display = 'none';
+    btnEdit.style.display = 'block';
+    btnSave.style.display = 'none';
+    btnCancel.style.display = 'none';
+}
