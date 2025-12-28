@@ -75,6 +75,7 @@ let despesas = [];
 let unsubscribePessoas = null;
 let unsubscribeDespesas = null;
 let currentImageFile = null; // Armazenar imagem atual para OCR
+let despesaEmEdicao = null; // Armazenar despesa sendo editada
 
 // Inicialização
 document.addEventListener('DOMContentLoaded', () => {
@@ -461,6 +462,68 @@ async function removerPessoa(firebaseId) {
     }
 }
 
+// Editar despesa
+function editarDespesa(firebaseId) {
+    const despesa = despesas.find(d => d.firebaseId === firebaseId);
+    if (!despesa) return;
+    
+    despesaEmEdicao = firebaseId;
+    
+    // Mudar título do modal
+    document.getElementById('tituloModal').textContent = 'Editar Despesa';
+    
+    // Preencher campos
+    document.getElementById('descricao').value = despesa.descricao;
+    document.getElementById('valor').value = despesa.valor.toFixed(2);
+    
+    // Preencher select de pagador
+    const selectPagador = document.getElementById('pagador');
+    selectPagador.innerHTML = '<option value="">Selecione...</option>';
+    pessoas.forEach(pessoa => {
+        const selected = pessoa.id === despesa.pagadorId ? 'selected' : '';
+        selectPagador.innerHTML += `<option value="${pessoa.id}" ${selected}>${pessoa.nome}</option>`;
+    });
+    
+    // Preencher checkboxes de divisão
+    const checkboxPessoas = document.getElementById('checkboxPessoas');
+    checkboxPessoas.innerHTML = '';
+    pessoas.forEach(pessoa => {
+        const checked = despesa.pessoasSelecionadas.includes(pessoa.id) ? 'checked' : '';
+        checkboxPessoas.innerHTML += `
+            <div class="checkbox-item">
+                <input type="checkbox" id="pessoa_${pessoa.id}" value="${pessoa.id}" ${checked}>
+                <label for="pessoa_${pessoa.id}">${pessoa.nome}</label>
+            </div>
+        `;
+    });
+    
+    // Mostrar preview do arquivo se existir
+    if (despesa.arquivo) {
+        const preview = document.getElementById('previewFoto');
+        const tipo = despesa.arquivoTipo || 'image/jpeg';
+        const nome = despesa.arquivoNome || 'recibo.jpg';
+        
+        if (tipo.startsWith('image/')) {
+            preview.innerHTML = `
+                <img src="${despesa.arquivo}" alt="Recibo" id="imagemRecibo">
+                <div style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-light);">
+                    ${nome}
+                </div>
+            `;
+        } else if (tipo === 'application/pdf') {
+            preview.innerHTML = `
+                <div style="padding: 1rem; background: var(--bg); border-radius: 8px; text-align: center;">
+                    <div style="font-size: 3rem; margin-bottom: 0.5rem;">📄</div>
+                    <div style="font-weight: 500;">${nome}</div>
+                </div>
+            `;
+        }
+    }
+    
+    // Abrir modal
+    document.getElementById('modalDespesa').classList.add('active');
+}
+
 // Abrir modal de despesa
 function abrirModalDespesa() {
     if (pessoas.length === 0) {
@@ -468,6 +531,10 @@ function abrirModalDespesa() {
         mudarTab('pessoas');
         return;
     }
+    
+    // Resetar modo de edição
+    despesaEmEdicao = null;
+    document.getElementById('tituloModal').textContent = 'Nova Despesa';
     
     // Preencher select de pagador
     const selectPagador = document.getElementById('pagador');
@@ -500,6 +567,8 @@ function fecharModalDespesa() {
     document.getElementById('ocrStatus').style.display = 'none';
     document.getElementById('ocrStatus').innerHTML = '';
     currentImageFile = null;
+    despesaEmEdicao = null;
+    document.getElementById('tituloModal').textContent = 'Nova Despesa';
 }
 
 // Extrair valor do recibo usando OCR
@@ -775,20 +844,38 @@ async function salvarDespesa(e) {
     
     async function finalizarSalvamento() {
         try {
-            const despesa = {
-                id: Date.now(),
+            const despesaData = {
                 descricao,
                 valor,
                 pagadorId,
                 pessoasSelecionadas,
                 valorPorPessoa: valor / pessoasSelecionadas.length,
-                data: new Date().toISOString(),
                 arquivo: arquivoBase64,
                 arquivoNome: arquivoNome,
                 arquivoTipo: arquivoTipo
             };
             
-            await addDoc(collection(db, 'despesas'), despesa);
+            if (despesaEmEdicao) {
+                // Atualizar despesa existente
+                const despesaExistente = despesas.find(d => d.firebaseId === despesaEmEdicao);
+                
+                // Manter arquivo antigo se não foi alterado
+                if (!arquivoBase64 && despesaExistente) {
+                    despesaData.arquivo = despesaExistente.arquivo;
+                    despesaData.arquivoNome = despesaExistente.arquivoNome;
+                    despesaData.arquivoTipo = despesaExistente.arquivoTipo;
+                }
+                
+                await updateDoc(doc(db, 'despesas', despesaEmEdicao), despesaData);
+                console.log('Despesa atualizada');
+            } else {
+                // Criar nova despesa
+                despesaData.id = Date.now();
+                despesaData.data = new Date().toISOString();
+                await addDoc(collection(db, 'despesas'), despesaData);
+                console.log('Despesa criada');
+            }
+            
             fecharModalDespesa();
             mudarTab('despesas');
         } catch (error) {
@@ -844,9 +931,9 @@ function renderizarPessoas() {
                             <span class="pessoa-nome">${pessoa.nome}</span>
                             ${despesasCount > 0 ? `<div class="pessoa-stats">${despesasCount} despesa${despesasCount > 1 ? 's' : ''}</div>` : ''}
                         </div>
-                        <div id="nome-edit-${pessoa.firebaseId}" style="display: none;">
+                        <div id="nome-edit-${pessoa.firebaseId}" style="display: none; width: 100%;">
                             <input type="text" class="pessoa-nome-input" id="input-${pessoa.firebaseId}" 
-                                   value="${pessoa.nome}">
+                                   value="${pessoa.nome.replace(/"/g, '&quot;')}">
                         </div>
                     </div>
                 </div>
@@ -906,8 +993,13 @@ function renderizarDespesas() {
                     ${participantes.map(nome => `<span class="tag">${nome}</span>`).join('')}
                 </div>
                 ${despesa.arquivo ? renderizarArquivo(despesa) : ''}
-                <div style="margin-top: 0.75rem;">
-                    <button class="btn-remover" onclick="removerDespesa('${despesa.firebaseId}')">Excluir</button>
+                <div style="margin-top: 0.75rem; display: flex; gap: 0.5rem;">
+                    <button class="btn-secondary" onclick="editarDespesa('${despesa.firebaseId}')" style="flex: 1; margin: 0;">
+                        ✏️ Editar
+                    </button>
+                    <button class="btn-remover" onclick="removerDespesa('${despesa.firebaseId}')" style="flex: 1; margin: 0;">
+                        Excluir
+                    </button>
                 </div>
             </div>
         `;
@@ -1052,6 +1144,7 @@ window.editarPessoa = editarPessoa;
 window.salvarEdicaoPessoa = salvarEdicaoPessoa;
 window.cancelarEdicaoPessoa = cancelarEdicaoPessoa;
 window.selecionarValor = selecionarValor;
+window.editarDespesa = editarDespesa;
 
 // Editar pessoa
 function editarPessoa(firebaseId) {
