@@ -17,7 +17,10 @@ import {
     signInWithRedirect,
     getRedirectResult,
     onAuthStateChanged,
-    signOut
+    signOut,
+    setPersistence,
+    browserLocalPersistence,
+    browserSessionPersistence
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -34,6 +37,25 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
+
+// Configurar persistência de sessão
+console.log('Configurando persistencia de sessao...');
+setPersistence(auth, browserLocalPersistence)
+    .then(() => {
+        console.log('[OK] Persistencia configurada: LOCAL');
+    })
+    .catch((error) => {
+        console.error('[ERRO] Falha ao configurar persistencia:', error);
+        console.log('Tentando persistencia de sessao...');
+        return setPersistence(auth, browserSessionPersistence);
+    })
+    .then(() => {
+        console.log('[OK] Persistencia de sessao OK');
+    })
+    .catch((error) => {
+        console.error('[ERRO] Nenhuma persistencia funcionou:', error);
+        alert('AVISO: Cookies ou armazenamento local podem estar bloqueados. O login pode nao funcionar.');
+    });
 
 // Estado do usuário atual
 let currentUser = null;
@@ -73,12 +95,21 @@ function inicializarAuth() {
     
     // Verificar se voltou de um redirect (mobile)
     console.log('Verificando redirect result...');
+    const hadPendingRedirect = localStorage.getItem('pendingGoogleRedirect');
+    console.log('Tinha redirect pendente?', hadPendingRedirect);
+    
+    if (hadPendingRedirect) {
+        console.log('Limpando flag de redirect...');
+        localStorage.removeItem('pendingGoogleRedirect');
+    }
+    
     getRedirectResult(auth)
         .then((result) => {
             console.log('=== REDIRECT RESULT COMPLETO ===');
             console.log('Result object:', result);
             console.log('Result type:', typeof result);
             console.log('Result keys:', result ? Object.keys(result) : 'null');
+            console.log('Had pending redirect:', hadPendingRedirect);
             
             if (result && result.user) {
                 currentUser = result.user;
@@ -86,7 +117,12 @@ function inicializarAuth() {
                 console.log('User UID:', currentUser.uid);
                 console.log('User email:', currentUser.email);
             } else {
-                console.log('Nenhum redirect pendente ou user null');
+                if (hadPendingRedirect) {
+                    console.error('[ERRO] Tinha redirect pendente mas result e null!');
+                    console.error('Possivel causa: cookies/storage bloqueados ou modo anonimo');
+                } else {
+                    console.log('Nenhum redirect pendente ou user null');
+                }
                 console.log('Result:', result);
             }
         })
@@ -146,6 +182,25 @@ async function loginComGoogle() {
     console.log('Timestamp:', new Date().toISOString());
     console.log('User agent:', navigator.userAgent);
     
+    // Verificar se localStorage está disponível
+    try {
+        localStorage.setItem('test', 'test');
+        localStorage.removeItem('test');
+        console.log('[OK] localStorage disponivel');
+    } catch (e) {
+        console.error('[ERRO] localStorage bloqueado:', e);
+        alert('ERRO: Armazenamento local bloqueado!\n\nSolucao:\n1. Configuracoes do navegador\n2. Privacidade\n3. Habilite cookies e armazenamento para este site');
+        return;
+    }
+    
+    // Verificar se cookies estão habilitados
+    const cookiesEnabled = navigator.cookieEnabled;
+    console.log('Cookies habilitados:', cookiesEnabled);
+    if (!cookiesEnabled) {
+        alert('ERRO: Cookies desabilitados!\n\nHabilite cookies no navegador para fazer login.');
+        return;
+    }
+    
     const btnGoogleLogin = document.getElementById('btnGoogleLogin');
     
     try {
@@ -163,6 +218,11 @@ async function loginComGoogle() {
             console.log('[REDIRECT] Iniciando signInWithRedirect...');
             console.log('Auth:', auth);
             console.log('Provider:', googleProvider);
+            
+            // Salvar flag no localStorage para saber que iniciamos o redirect
+            localStorage.setItem('pendingGoogleRedirect', 'true');
+            console.log('Flag de redirect salva no localStorage');
+            
             await signInWithRedirect(auth, googleProvider);
             console.log('Redirect chamado (pagina deve redirecionar agora)');
             // A página vai recarregar após o redirect
@@ -188,6 +248,7 @@ async function loginComGoogle() {
             mensagemErro = 'Popup bloqueado! Tentando metodo alternativo...';
             // Tentar redirect como fallback
             try {
+                localStorage.setItem('pendingGoogleRedirect', 'true');
                 await signInWithRedirect(auth, googleProvider);
                 return; // Vai redirecionar, não precisa mostrar erro
             } catch (redirectError) {
