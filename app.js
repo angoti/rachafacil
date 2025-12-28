@@ -61,15 +61,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Inicializar autenticação
 function inicializarAuth() {
-    console.log('=== INICIANDO AUTENTICAÇÃO ===');
+    console.log('=== INICIANDO AUTENTICACAO ===');
     console.log('Auth configurado:', !!auth);
     console.log('Provider configurado:', !!googleProvider);
     
     const btnGoogleLogin = document.getElementById('btnGoogleLogin');
     const btnLogout = document.getElementById('btnLogout');
     
-    console.log('Botão login encontrado:', !!btnGoogleLogin);
-    console.log('Botão logout encontrado:', !!btnLogout);
+    console.log('Botao login encontrado:', !!btnGoogleLogin);
+    console.log('Botao logout encontrado:', !!btnLogout);
     
     // Verificar se voltou de um redirect (mobile)
     console.log('Verificando redirect result...');
@@ -78,26 +78,26 @@ function inicializarAuth() {
             console.log('Redirect result recebido:', result);
             if (result) {
                 currentUser = result.user;
-                console.log('✅ Login por redirect OK:', currentUser.displayName);
+                console.log('[OK] Login por redirect OK:', currentUser.displayName);
             } else {
                 console.log('Nenhum redirect pendente');
             }
         })
         .catch((error) => {
-            console.error('❌ ERRO no redirect:', error);
-            console.error('Código do erro:', error.code);
+            console.error('[ERRO] no redirect:', error);
+            console.error('Codigo do erro:', error.code);
             console.error('Mensagem:', error.message);
             if (error.code === 'auth/unauthorized-domain') {
-                alert('ERRO: Domínio não autorizado no Firebase. Adicione angoti.github.io nos domínios autorizados.');
+                alert('ERRO: Dominio nao autorizado no Firebase. Adicione angoti.github.io nos dominios autorizados.');
             }
         });
     
     // Listener de login
     if (btnGoogleLogin) {
         btnGoogleLogin.addEventListener('click', loginComGoogle);
-        console.log('✅ Click listener adicionado ao botão');
+        console.log('[OK] Click listener adicionado ao botao');
     } else {
-        console.error('❌ ERRO: Botão não encontrado!');
+        console.error('[ERRO] Botao nao encontrado!');
     }
     
     // Listener de logout
@@ -113,7 +113,7 @@ function inicializarAuth() {
         if (user) {
             // Usuário logado
             currentUser = user;
-            console.log('✅ USUÁRIO LOGADO');
+            console.log('[OK] USUARIO LOGADO');
             console.log('Nome:', user.displayName);
             console.log('Email:', user.email);
             mostrarApp();
@@ -122,7 +122,7 @@ function inicializarAuth() {
         } else {
             // Usuário deslogado
             currentUser = null;
-            console.log('❌ USUÁRIO DESLOGADO');
+            console.log('[INFO] USUARIO DESLOGADO');
             mostrarLogin();
             limparListeners();
         }
@@ -132,7 +132,7 @@ function inicializarAuth() {
 // Login com Google
 async function loginComGoogle() {
     console.log('');
-    console.log('=== BOTÃO CLICADO ===');
+    console.log('=== BOTAO CLICADO ===');
     console.log('Timestamp:', new Date().toISOString());
     console.log('User agent:', navigator.userAgent);
     
@@ -142,32 +142,32 @@ async function loginComGoogle() {
         // Desabilitar botão durante login
         btnGoogleLogin.disabled = true;
         btnGoogleLogin.textContent = 'Carregando...';
-        console.log('Botão desabilitado');
+        console.log('Botao desabilitado');
         
         // Detectar se é mobile
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        console.log('É mobile?', isMobile);
+        console.log('E mobile?', isMobile);
         
         if (isMobile) {
             // Mobile: usar redirect (mais confiável, não é bloqueado)
-            console.log('🔄 Iniciando signInWithRedirect...');
+            console.log('[REDIRECT] Iniciando signInWithRedirect...');
             console.log('Auth:', auth);
             console.log('Provider:', googleProvider);
             await signInWithRedirect(auth, googleProvider);
-            console.log('Redirect chamado (página deve redirecionar agora)');
+            console.log('Redirect chamado (pagina deve redirecionar agora)');
             // A página vai recarregar após o redirect
         } else {
             // Desktop: usar popup
-            console.log('📱 Iniciando signInWithPopup...');
+            console.log('[POPUP] Iniciando signInWithPopup...');
             const result = await signInWithPopup(auth, googleProvider);
             currentUser = result.user;
-            console.log('✅ Login popup OK:', currentUser.displayName);
+            console.log('[OK] Login popup OK:', currentUser.displayName);
         }
     } catch (error) {
         console.error('');
         console.error('=== ERRO NO LOGIN ===');
         console.error('Error object completo:', error);
-        console.error('Código:', error.code);
+        console.error('Codigo:', error.code);
         console.error('Mensagem:', error.message);
         console.error('Stack:', error.stack);
         
@@ -175,19 +175,19 @@ async function loginComGoogle() {
         
         if (error.code === 'auth/popup-blocked') {
             console.log('Popup bloqueado, tentando redirect...');
-            mensagemErro = 'Popup bloqueado! Tentando método alternativo...';
+            mensagemErro = 'Popup bloqueado! Tentando metodo alternativo...';
             // Tentar redirect como fallback
             try {
                 await signInWithRedirect(auth, googleProvider);
                 return; // Vai redirecionar, não precisa mostrar erro
             } catch (redirectError) {
-                console.error('Erro no redirect também:', redirectError);
-                mensagemErro = 'Não foi possível fazer login. Verifique suas configurações de privacidade.';
+                console.error('Erro no redirect tambem:', redirectError);
+                mensagemErro = 'Nao foi possivel fazer login. Verifique suas configuracoes de privacidade.';
             }
         } else if (error.code === 'auth/popup-closed-by-user') {
             mensagemErro = 'Login cancelado.';
         } else if (error.code === 'auth/unauthorized-domain') {
-            mensagemErro = 'ERRO CRÍTICO!\n\nDomínio não autorizado.\n\nSolução:\n1. Acesse console.firebase.google.com\n2. Projeto: racha-facil-angoti\n3. Authentication → Settings\n4. Authorized domains → Add domain\n5. Digite: angoti.github.io';
+            mensagemErro = 'ERRO CRITICO!\n\nDominio nao autorizado.\n\nSolucao:\n1. Acesse console.firebase.google.com\n2. Projeto: racha-facil-angoti\n3. Authentication > Settings\n4. Authorized domains > Add domain\n5. Digite: angoti.github.io';
         }
         
         alert(mensagemErro);
@@ -204,7 +204,7 @@ async function loginComGoogle() {
             </svg>
             Entrar com Google
         `;
-        console.log('Botão reabilitado');
+        console.log('Botao reabilitado');
     }
 }
 
@@ -555,4 +555,4 @@ async function removerDespesa(firebaseId) {
     if (!confirm('Tem certeza que deseja remover esta despesa?')) return;
     
     try {
-        await deleteDoc(doc(db, 'desp
+        
