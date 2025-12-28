@@ -48,8 +48,17 @@ function inicializarEventos() {
     // Form despesa
     document.getElementById('formDespesa').addEventListener('submit', salvarDespesa);
     
-    // Preview foto
-    document.getElementById('fotoRecibo').addEventListener('change', previewFoto);
+    // Preview foto/arquivo
+    document.getElementById('fotoRecibo').addEventListener('change', previewArquivo);
+    document.getElementById('cameraRecibo').addEventListener('change', previewArquivo);
+    
+    // Botões de câmera e arquivo
+    document.getElementById('btnCamera').addEventListener('click', () => {
+        document.getElementById('cameraRecibo').click();
+    });
+    document.getElementById('btnArquivo').addEventListener('click', () => {
+        document.getElementById('fotoRecibo').click();
+    });
     
     // Fechar modal clicando fora
     document.getElementById('modalDespesa').addEventListener('click', (e) => {
@@ -139,15 +148,47 @@ function fecharModalDespesa() {
     document.getElementById('previewFoto').innerHTML = '';
 }
 
-// Preview da foto
-function previewFoto(e) {
+// Preview da foto ou arquivo
+function previewArquivo(e) {
     const file = e.target.files[0];
     const preview = document.getElementById('previewFoto');
     
     if (file) {
         const reader = new FileReader();
         reader.onload = (e) => {
-            preview.innerHTML = `<img src="${e.target.result}" alt="Preview do recibo">`;
+            const fileType = file.type;
+            
+            if (fileType.startsWith('image/')) {
+                // É uma imagem
+                preview.innerHTML = `
+                    <img src="${e.target.result}" alt="Preview do recibo">
+                    <div style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-light);">
+                        ${file.name} (${(file.size / 1024).toFixed(1)} KB)
+                    </div>
+                `;
+            } else if (fileType === 'application/pdf') {
+                // É um PDF
+                preview.innerHTML = `
+                    <div style="padding: 1rem; background: var(--bg); border-radius: 8px; text-align: center;">
+                        <div style="font-size: 3rem; margin-bottom: 0.5rem;">📄</div>
+                        <div style="font-weight: 500;">${file.name}</div>
+                        <div style="font-size: 0.85rem; color: var(--text-light); margin-top: 0.25rem;">
+                            PDF • ${(file.size / 1024).toFixed(1)} KB
+                        </div>
+                    </div>
+                `;
+            } else {
+                // Outro tipo de arquivo
+                preview.innerHTML = `
+                    <div style="padding: 1rem; background: var(--bg); border-radius: 8px; text-align: center;">
+                        <div style="font-size: 3rem; margin-bottom: 0.5rem;">📎</div>
+                        <div style="font-weight: 500;">${file.name}</div>
+                        <div style="font-size: 0.85rem; color: var(--text-light); margin-top: 0.25rem;">
+                            ${(file.size / 1024).toFixed(1)} KB
+                        </div>
+                    </div>
+                `;
+            }
         };
         reader.readAsDataURL(file);
     }
@@ -172,16 +213,27 @@ function salvarDespesa(e) {
         return;
     }
     
-    // Processar foto se houver
-    let fotoBase64 = null;
-    const fotoInput = document.getElementById('fotoRecibo');
-    if (fotoInput.files.length > 0) {
+    // Processar foto/arquivo se houver
+    let arquivoBase64 = null;
+    let arquivoNome = null;
+    let arquivoTipo = null;
+    
+    const cameraInput = document.getElementById('cameraRecibo');
+    const arquivoInput = document.getElementById('fotoRecibo');
+    const inputComArquivo = cameraInput.files.length > 0 ? cameraInput : 
+                            arquivoInput.files.length > 0 ? arquivoInput : null;
+    
+    if (inputComArquivo && inputComArquivo.files.length > 0) {
+        const file = inputComArquivo.files[0];
+        arquivoNome = file.name;
+        arquivoTipo = file.type;
+        
         const reader = new FileReader();
         reader.onload = (e) => {
-            fotoBase64 = e.target.result;
+            arquivoBase64 = e.target.result;
             finalizarSalvamento();
         };
-        reader.readAsDataURL(fotoInput.files[0]);
+        reader.readAsDataURL(file);
     } else {
         finalizarSalvamento();
     }
@@ -195,7 +247,9 @@ function salvarDespesa(e) {
             pessoasSelecionadas,
             valorPorPessoa: valor / pessoasSelecionadas.length,
             data: new Date().toISOString(),
-            foto: fotoBase64
+            arquivo: arquivoBase64,
+            arquivoNome: arquivoNome,
+            arquivoTipo: arquivoTipo
         };
         
         despesas.push(despesa);
@@ -277,11 +331,7 @@ function renderizarDespesas() {
                 <div class="despesa-divisao">
                     ${participantes.map(nome => `<span class="tag">${nome}</span>`).join('')}
                 </div>
-                ${despesa.foto ? `
-                    <div class="despesa-foto">
-                        <img src="${despesa.foto}" alt="Recibo" onclick="abrirFoto('${despesa.foto}')">
-                    </div>
-                ` : ''}
+                ${despesa.arquivo ? renderizarArquivo(despesa) : ''}
                 <div style="margin-top: 0.75rem;">
                     <button class="btn-remover" onclick="removerDespesa(${despesa.id})">Excluir</button>
                 </div>
@@ -290,7 +340,63 @@ function renderizarDespesas() {
     }).join('');
 }
 
-// Abrir foto em tamanho maior
+// Renderizar arquivo anexado (imagem ou PDF)
+function renderizarArquivo(despesa) {
+    // Compatibilidade com versão antiga que usava 'foto'
+    const arquivo = despesa.arquivo || despesa.foto;
+    const tipo = despesa.arquivoTipo || 'image/jpeg';
+    const nome = despesa.arquivoNome || 'recibo.jpg';
+    
+    if (!arquivo) return '';
+    
+    if (tipo.startsWith('image/')) {
+        return `
+            <div class="despesa-foto">
+                <img src="${arquivo}" alt="Recibo" onclick="abrirArquivo('${arquivo}', '${tipo}', '${nome}')">
+            </div>
+        `;
+    } else if (tipo === 'application/pdf') {
+        return `
+            <div class="despesa-foto" onclick="abrirArquivo('${arquivo}', '${tipo}', '${nome}')" style="cursor: pointer;">
+                <div style="padding: 1rem; background: var(--bg); border-radius: 8px; text-align: center;">
+                    <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">📄</div>
+                    <div style="font-weight: 500; font-size: 0.9rem;">${nome}</div>
+                    <div style="font-size: 0.75rem; color: var(--text-light); margin-top: 0.25rem;">
+                        Clique para visualizar
+                    </div>
+                </div>
+            </div>
+        `;
+    } else {
+        return `
+            <div class="despesa-foto" onclick="abrirArquivo('${arquivo}', '${tipo}', '${nome}')" style="cursor: pointer;">
+                <div style="padding: 1rem; background: var(--bg); border-radius: 8px; text-align: center;">
+                    <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">📎</div>
+                    <div style="font-weight: 500; font-size: 0.9rem;">${nome}</div>
+                    <div style="font-size: 0.75rem; color: var(--text-light); margin-top: 0.25rem;">
+                        Clique para abrir
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+}
+
+// Abrir arquivo em nova aba ou download
+function abrirArquivo(base64, tipo, nome) {
+    if (tipo.startsWith('image/')) {
+        // Imagem abre em nova aba
+        window.open(base64, '_blank');
+    } else {
+        // PDF e outros fazem download
+        const link = document.createElement('a');
+        link.href = base64;
+        link.download = nome;
+        link.click();
+    }
+}
+
+// Abrir foto em tamanho maior (manter para compatibilidade)
 function abrirFoto(src) {
     window.open(src, '_blank');
 }
