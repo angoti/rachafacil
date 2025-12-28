@@ -650,11 +650,15 @@ function renderizarPessoas() {
             <div class="pessoa-item" id="pessoa-${pessoa.firebaseId}">
                 <div class="pessoa-item-content">
                     <div class="pessoa-avatar">${inicial}</div>
-                    <div class="pessoa-info">
-                        <span class="pessoa-nome" id="nome-${pessoa.firebaseId}">${pessoa.nome}</span>
-                        <input type="text" class="pessoa-nome-input" id="input-${pessoa.firebaseId}" 
-                               value="${pessoa.nome}" style="display: none;">
-                        ${despesasCount > 0 ? `<div class="pessoa-stats">${despesasCount} despesa${despesasCount > 1 ? 's' : ''}</div>` : ''}
+                    <div class="pessoa-info" style="flex: 1;">
+                        <div id="nome-view-${pessoa.firebaseId}">
+                            <span class="pessoa-nome">${pessoa.nome}</span>
+                            ${despesasCount > 0 ? `<div class="pessoa-stats">${despesasCount} despesa${despesasCount > 1 ? 's' : ''}</div>` : ''}
+                        </div>
+                        <div id="nome-edit-${pessoa.firebaseId}" style="display: none;">
+                            <input type="text" class="pessoa-nome-input" id="input-${pessoa.firebaseId}" 
+                                   value="${pessoa.nome}">
+                        </div>
                     </div>
                 </div>
                 <div class="pessoa-actions">
@@ -861,17 +865,18 @@ window.cancelarEdicaoPessoa = cancelarEdicaoPessoa;
 
 // Editar pessoa
 function editarPessoa(firebaseId) {
-    const nomeSpan = document.getElementById(`nome-${firebaseId}`);
+    const nomeView = document.getElementById(`nome-view-${firebaseId}`);
+    const nomeEdit = document.getElementById(`nome-edit-${firebaseId}`);
     const nomeInput = document.getElementById(`input-${firebaseId}`);
     const btnEdit = document.getElementById(`btn-edit-${firebaseId}`);
     const btnSave = document.getElementById(`btn-save-${firebaseId}`);
     const btnCancel = document.getElementById(`btn-cancel-${firebaseId}`);
     
-    nomeSpan.style.display = 'none';
-    nomeInput.style.display = 'block';
+    nomeView.style.display = 'none';
+    nomeEdit.style.display = 'block';
     btnEdit.style.display = 'none';
-    btnSave.style.display = 'block';
-    btnCancel.style.display = 'block';
+    btnSave.style.display = 'flex';
+    btnCancel.style.display = 'flex';
     
     nomeInput.focus();
     nomeInput.select();
@@ -883,7 +888,7 @@ async function salvarEdicaoPessoa(firebaseId) {
     const novoNome = nomeInput.value.trim();
     
     if (!novoNome) {
-        alert('Digite um nome válido');
+        alert('Digite um nome valido');
         return;
     }
     
@@ -892,7 +897,7 @@ async function salvarEdicaoPessoa(firebaseId) {
     
     // Verificar se já existe outra pessoa com esse nome
     if (pessoas.find(p => p.firebaseId !== firebaseId && p.nome.toLowerCase() === novoNome.toLowerCase())) {
-        alert('Já existe uma pessoa com esse nome');
+        alert('Ja existe uma pessoa com esse nome');
         return;
     }
     
@@ -912,16 +917,17 @@ function cancelarEdicaoPessoa(firebaseId) {
     const pessoa = pessoas.find(p => p.firebaseId === firebaseId);
     if (!pessoa) return;
     
-    const nomeSpan = document.getElementById(`nome-${firebaseId}`);
+    const nomeView = document.getElementById(`nome-view-${firebaseId}`);
+    const nomeEdit = document.getElementById(`nome-edit-${firebaseId}`);
     const nomeInput = document.getElementById(`input-${firebaseId}`);
     const btnEdit = document.getElementById(`btn-edit-${firebaseId}`);
     const btnSave = document.getElementById(`btn-save-${firebaseId}`);
     const btnCancel = document.getElementById(`btn-cancel-${firebaseId}`);
     
     nomeInput.value = pessoa.nome;
-    nomeSpan.style.display = 'block';
-    nomeInput.style.display = 'none';
-    btnEdit.style.display = 'block';
+    nomeView.style.display = 'block';
+    nomeEdit.style.display = 'none';
+    btnEdit.style.display = 'flex';
     btnSave.style.display = 'none';
     btnCancel.style.display = 'none';
 }
