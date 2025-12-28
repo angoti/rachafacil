@@ -86,8 +86,13 @@
                     </div>
 
                     <div class="form-group">
-                        <label>Foto do recibo (opcional)</label>
-                        <input type="file" id="fotoRecibo" accept="image/*" capture="environment">
+                        <label>Recibo (opcional)</label>
+                        <div style="display: flex; gap: 0.5rem; margin-bottom: 0.75rem;">
+                            <button type="button" class="btn-secondary" id="btnCamera" style="flex: 1; margin: 0;">📷 Câmera</button>
+                            <button type="button" class="btn-secondary" id="btnArquivo" style="flex: 1; margin: 0;">📁 Arquivo</button>
+                        </div>
+                        <input type="file" id="fotoRecibo" accept="image/*,application/pdf" style="display: none;">
+                        <input type="file" id="cameraRecibo" accept="image/*" capture="environment" style="display: none;">
                         <div id="previewFoto"></div>
                     </div>
 
