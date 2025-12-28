@@ -383,14 +383,14 @@ body {
 
 .pessoa-item {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1.25rem;
+    flex-direction: column;
+    padding: 0;
     background: var(--surface);
     border-radius: 12px;
     border: 2px solid var(--border);
     transition: all 0.3s;
     box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    overflow: hidden;
 }
 
 .pessoa-item:hover {
@@ -403,6 +403,7 @@ body {
     align-items: center;
     gap: 1rem;
     flex: 1;
+    padding: 1.25rem;
 }
 
 .pessoa-avatar {
@@ -456,6 +457,9 @@ body {
     display: flex;
     gap: 0.5rem;
     align-items: center;
+    padding: 0.75rem 1.25rem;
+    background: var(--bg);
+    border-top: 1px solid var(--border);
 }
 
 .btn-icon {
@@ -759,3 +763,4 @@ form {
     height: 50px;
     font-size: 0.9rem;
 }
+
