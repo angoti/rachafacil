@@ -1,27 +1,102 @@
+// Configuração Firebase
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { 
+    getFirestore, 
+    collection, 
+    addDoc, 
+    deleteDoc, 
+    doc, 
+    onSnapshot,
+    enableIndexedDbPersistence 
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDj1sXtBjPR1bHi-5bocY6hivgPriIaZxY",
+  authDomain: "racha-facil-angoti.firebaseapp.com",
+  projectId: "racha-facil-angoti",
+  storageBucket: "racha-facil-angoti.firebasestorage.app",
+  messagingSenderId: "117782293926",
+  appId: "1:117782293926:web:9fccaf880bfea0561c7367"
+};
+
+// Inicializar Firebase
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// Habilitar persistência offline
+enableIndexedDbPersistence(db).catch((err) => {
+    if (err.code === 'failed-precondition') {
+        console.log('Persistência offline: múltiplas abas abertas');
+    } else if (err.code === 'unimplemented') {
+        console.log('Persistência offline não suportada neste navegador');
+    }
+});
+
 // Estado da aplicação
 let pessoas = [];
 let despesas = [];
+let unsubscribePessoas = null;
+let unsubscribeDespesas = null;
 
 // Inicialização
 document.addEventListener('DOMContentLoaded', () => {
-    carregarDados();
+    migrarDadosLocalStorage();
+    inicializarListeners();
     inicializarEventos();
-    atualizarInterface();
 });
 
-// Carregar dados do localStorage
-function carregarDados() {
-    const pessoasSalvas = localStorage.getItem('pessoas');
-    const despesasSalvas = localStorage.getItem('despesas');
+// Migrar dados do localStorage para Firebase (apenas uma vez)
+async function migrarDadosLocalStorage() {
+    const migrado = localStorage.getItem('migrado_firebase');
     
-    if (pessoasSalvas) pessoas = JSON.parse(pessoasSalvas);
-    if (despesasSalvas) despesas = JSON.parse(despesasSalvas);
+    if (!migrado) {
+        const pessoasLocal = localStorage.getItem('pessoas');
+        const despesasLocal = localStorage.getItem('despesas');
+        
+        if (pessoasLocal) {
+            const pessoasArray = JSON.parse(pessoasLocal);
+            for (const pessoa of pessoasArray) {
+                await addDoc(collection(db, 'pessoas'), pessoa);
+            }
+        }
+        
+        if (despesasLocal) {
+            const despesasArray = JSON.parse(despesasLocal);
+            for (const despesa of despesasArray) {
+                await addDoc(collection(db, 'despesas'), despesa);
+            }
+        }
+        
+        localStorage.setItem('migrado_firebase', 'true');
+        console.log('Dados migrados para Firebase com sucesso!');
+    }
 }
 
-// Salvar dados no localStorage
-function salvarDados() {
-    localStorage.setItem('pessoas', JSON.stringify(pessoas));
-    localStorage.setItem('despesas', JSON.stringify(despesas));
+// Inicializar listeners em tempo real do Firebase
+function inicializarListeners() {
+    // Listener de pessoas
+    unsubscribePessoas = onSnapshot(collection(db, 'pessoas'), (snapshot) => {
+        pessoas = [];
+        snapshot.forEach((doc) => {
+            pessoas.push({
+                firebaseId: doc.id,
+                ...doc.data()
+            });
+        });
+        atualizarInterface();
+    });
+    
+    // Listener de despesas
+    unsubscribeDespesas = onSnapshot(collection(db, 'despesas'), (snapshot) => {
+        despesas = [];
+        snapshot.forEach((doc) => {
+            despesas.push({
+                firebaseId: doc.id,
+                ...doc.data()
+            });
+        });
+        atualizarInterface();
+    });
 }
 
 // Inicializar eventos
@@ -78,7 +153,7 @@ function mudarTab(tabName) {
 }
 
 // Adicionar pessoa
-function adicionarPessoa() {
+async function adicionarPessoa() {
     const input = document.getElementById('inputNovaPessoa');
     const nome = input.value.trim();
     
@@ -92,23 +167,28 @@ function adicionarPessoa() {
         return;
     }
     
-    pessoas.push({
-        id: Date.now(),
-        nome: nome
-    });
-    
-    input.value = '';
-    salvarDados();
-    atualizarInterface();
+    try {
+        await addDoc(collection(db, 'pessoas'), {
+            id: Date.now(),
+            nome: nome
+        });
+        input.value = '';
+    } catch (error) {
+        console.error('Erro ao adicionar pessoa:', error);
+        alert('Erro ao adicionar pessoa. Tente novamente.');
+    }
 }
 
 // Remover pessoa
-function removerPessoa(id) {
+async function removerPessoa(firebaseId) {
     if (!confirm('Tem certeza que deseja remover esta pessoa?')) return;
     
-    pessoas = pessoas.filter(p => p.id !== id);
-    salvarDados();
-    atualizarInterface();
+    try {
+        await deleteDoc(doc(db, 'pessoas', firebaseId));
+    } catch (error) {
+        console.error('Erro ao remover pessoa:', error);
+        alert('Erro ao remover pessoa. Tente novamente.');
+    }
 }
 
 // Abrir modal de despesa
@@ -195,7 +275,7 @@ function previewArquivo(e) {
 }
 
 // Salvar despesa
-function salvarDespesa(e) {
+async function salvarDespesa(e) {
     e.preventDefault();
     
     const descricao = document.getElementById('descricao').value;
@@ -229,44 +309,50 @@ function salvarDespesa(e) {
         arquivoTipo = file.type;
         
         const reader = new FileReader();
-        reader.onload = (e) => {
+        reader.onload = async (e) => {
             arquivoBase64 = e.target.result;
-            finalizarSalvamento();
+            await finalizarSalvamento();
         };
         reader.readAsDataURL(file);
     } else {
-        finalizarSalvamento();
+        await finalizarSalvamento();
     }
     
-    function finalizarSalvamento() {
-        const despesa = {
-            id: Date.now(),
-            descricao,
-            valor,
-            pagadorId,
-            pessoasSelecionadas,
-            valorPorPessoa: valor / pessoasSelecionadas.length,
-            data: new Date().toISOString(),
-            arquivo: arquivoBase64,
-            arquivoNome: arquivoNome,
-            arquivoTipo: arquivoTipo
-        };
-        
-        despesas.push(despesa);
-        salvarDados();
-        fecharModalDespesa();
-        atualizarInterface();
-        mudarTab('despesas');
+    async function finalizarSalvamento() {
+        try {
+            const despesa = {
+                id: Date.now(),
+                descricao,
+                valor,
+                pagadorId,
+                pessoasSelecionadas,
+                valorPorPessoa: valor / pessoasSelecionadas.length,
+                data: new Date().toISOString(),
+                arquivo: arquivoBase64,
+                arquivoNome: arquivoNome,
+                arquivoTipo: arquivoTipo
+            };
+            
+            await addDoc(collection(db, 'despesas'), despesa);
+            fecharModalDespesa();
+            mudarTab('despesas');
+        } catch (error) {
+            console.error('Erro ao salvar despesa:', error);
+            alert('Erro ao salvar despesa. Tente novamente.');
+        }
     }
 }
 
 // Remover despesa
-function removerDespesa(id) {
+async function removerDespesa(firebaseId) {
     if (!confirm('Tem certeza que deseja remover esta despesa?')) return;
     
-    despesas = despesas.filter(d => d.id !== id);
-    salvarDados();
-    atualizarInterface();
+    try {
+        await deleteDoc(doc(db, 'despesas', firebaseId));
+    } catch (error) {
+        console.error('Erro ao remover despesa:', error);
+        alert('Erro ao remover despesa. Tente novamente.');
+    }
 }
 
 // Atualizar interface
@@ -288,7 +374,7 @@ function renderizarPessoas() {
     lista.innerHTML = pessoas.map(pessoa => `
         <div class="pessoa-item">
             <span class="pessoa-nome">${pessoa.nome}</span>
-            <button class="btn-remover" onclick="removerPessoa(${pessoa.id})">Remover</button>
+            <button class="btn-remover" onclick="removerPessoa('${pessoa.firebaseId}')">Remover</button>
         </div>
     `).join('');
 }
@@ -333,7 +419,7 @@ function renderizarDespesas() {
                 </div>
                 ${despesa.arquivo ? renderizarArquivo(despesa) : ''}
                 <div style="margin-top: 0.75rem;">
-                    <button class="btn-remover" onclick="removerDespesa(${despesa.id})">Excluir</button>
+                    <button class="btn-remover" onclick="removerDespesa('${despesa.firebaseId}')">Excluir</button>
                 </div>
             </div>
         `;
@@ -396,11 +482,6 @@ function abrirArquivo(base64, tipo, nome) {
     }
 }
 
-// Abrir foto em tamanho maior (manter para compatibilidade)
-function abrirFoto(src) {
-    window.open(src, '_blank');
-}
-
 // Renderizar saldos
 function renderizarSaldos() {
     const lista = document.getElementById('listaSaldos');
@@ -461,3 +542,8 @@ function renderizarSaldos() {
         `;
     }).join('');
 }
+
+// Tornar funções globais para onclick no HTML
+window.removerPessoa = removerPessoa;
+window.removerDespesa = removerDespesa;
+window.abrirArquivo = abrirArquivo;
