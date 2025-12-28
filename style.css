@@ -434,11 +434,17 @@ body {
 .pessoa-nome-input {
     font-weight: 600;
     font-size: 1.05rem;
-    padding: 0.5rem;
+    padding: 0.75rem 1rem;
     border: 2px solid var(--primary);
-    border-radius: 6px;
+    border-radius: 8px;
     width: 100%;
-    max-width: 200px;
+    background: white;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
+.pessoa-nome-input:focus {
+    outline: none;
+    border-color: var(--primary-dark);
 }
 
 .pessoa-stats {
@@ -453,31 +459,56 @@ body {
 }
 
 .btn-icon {
-    background: none;
-    border: none;
+    background: var(--bg);
+    border: 2px solid var(--border);
     cursor: pointer;
-    padding: 0.5rem;
+    padding: 0.65rem;
     border-radius: 8px;
     transition: all 0.3s;
     font-size: 1.2rem;
-    color: var(--text-light);
+    color: var(--text);
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .btn-icon:hover {
-    background: var(--bg);
-    color: var(--primary);
+    transform: scale(1.05);
+}
+
+.btn-icon.edit {
+    color: var(--text-light);
 }
 
 .btn-icon.edit:hover {
-    color: var(--primary);
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+.btn-icon.save {
+    background: var(--secondary);
+    color: white;
+    border-color: var(--secondary);
 }
 
 .btn-icon.save:hover {
-    color: var(--secondary);
+    background: #059669;
+    border-color: #059669;
+}
+
+.btn-icon.cancel {
+    background: var(--surface);
+    color: var(--text-light);
+    border-color: var(--border);
 }
 
 .btn-icon.cancel:hover {
-    color: var(--text);
+    background: var(--danger);
+    color: white;
+    border-color: var(--danger);
 }
 
 .btn-remover {
