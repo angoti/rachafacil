@@ -401,3 +401,61 @@ form {
     padding: 3rem 1rem;
     font-style: italic;
 }
+
+/* Lightbox */
+.lightbox {
+    display: none;
+    position: fixed;
+    z-index: 2000;
+    padding-top: 50px;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.95);
+}
+
+.lightbox.active {
+    display: block;
+    animation: fadeIn 0.3s;
+}
+
+.lightbox-content {
+    margin: auto;
+    display: block;
+    width: 90%;
+    max-width: 900px;
+    max-height: 80vh;
+    object-fit: contain;
+}
+
+.lightbox-close {
+    position: absolute;
+    top: 15px;
+    right: 35px;
+    color: #f1f1f1;
+    font-size: 40px;
+    font-weight: bold;
+    transition: 0.3s;
+    cursor: pointer;
+    z-index: 2001;
+}
+
+.lightbox-close:hover,
+.lightbox-close:focus {
+    color: #bbb;
+}
+
+#lightbox-caption {
+    margin: auto;
+    display: block;
+    width: 80%;
+    max-width: 700px;
+    text-align: center;
+    color: #ccc;
+    padding: 10px 0;
+    height: 50px;
+    font-size: 0.9rem;
+}
+
