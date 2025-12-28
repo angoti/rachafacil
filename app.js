@@ -14,6 +14,8 @@ import {
     getAuth,
     GoogleAuthProvider,
     signInWithPopup,
+    signInWithRedirect,
+    getRedirectResult,
     onAuthStateChanged,
     signOut
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
@@ -62,6 +64,21 @@ function inicializarAuth() {
     const btnGoogleLogin = document.getElementById('btnGoogleLogin');
     const btnLogout = document.getElementById('btnLogout');
     
+    // Verificar se voltou de um redirect (mobile)
+    getRedirectResult(auth)
+        .then((result) => {
+            if (result) {
+                currentUser = result.user;
+                console.log('Login por redirect realizado:', currentUser.displayName);
+            }
+        })
+        .catch((error) => {
+            console.error('Erro no redirect:', error);
+            if (error.code === 'auth/unauthorized-domain') {
+                alert('ERRO: Domínio não autorizado no Firebase. Adicione angoti.github.io nos domínios autorizados.');
+            }
+        });
+    
     // Listener de login
     btnGoogleLogin.addEventListener('click', loginComGoogle);
     
@@ -87,13 +104,66 @@ function inicializarAuth() {
 
 // Login com Google
 async function loginComGoogle() {
+    console.log('Iniciando login com Google...');
+    const btnGoogleLogin = document.getElementById('btnGoogleLogin');
+    
     try {
-        const result = await signInWithPopup(auth, googleProvider);
-        currentUser = result.user;
-        console.log('Login realizado:', currentUser.displayName);
+        // Desabilitar botão durante login
+        btnGoogleLogin.disabled = true;
+        btnGoogleLogin.textContent = 'Carregando...';
+        
+        // Detectar se é mobile
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        
+        if (isMobile) {
+            // Mobile: usar redirect (mais confiável, não é bloqueado)
+            console.log('Usando signInWithRedirect (mobile)...');
+            await signInWithRedirect(auth, googleProvider);
+            // A página vai recarregar após o redirect
+        } else {
+            // Desktop: usar popup
+            console.log('Usando signInWithPopup (desktop)...');
+            const result = await signInWithPopup(auth, googleProvider);
+            currentUser = result.user;
+            console.log('Login realizado com sucesso:', currentUser.displayName);
+        }
     } catch (error) {
-        console.error('Erro no login:', error);
-        alert('Erro ao fazer login. Tente novamente.');
+        console.error('Erro completo no login:', error);
+        console.error('Código do erro:', error.code);
+        console.error('Mensagem:', error.message);
+        
+        let mensagemErro = 'Erro ao fazer login. Tente novamente.';
+        
+        if (error.code === 'auth/popup-blocked') {
+            mensagemErro = 'Popup bloqueado! Tentando método alternativo...';
+            // Tentar redirect como fallback
+            try {
+                await signInWithRedirect(auth, googleProvider);
+                return; // Vai redirecionar, não precisa mostrar erro
+            } catch (redirectError) {
+                console.error('Erro no redirect também:', redirectError);
+                mensagemErro = 'Não foi possível fazer login. Verifique suas configurações de privacidade.';
+            }
+        } else if (error.code === 'auth/popup-closed-by-user') {
+            mensagemErro = 'Login cancelado.';
+        } else if (error.code === 'auth/unauthorized-domain') {
+            mensagemErro = 'ERRO: Domínio não autorizado. Adicione angoti.github.io no Firebase Console → Authentication → Settings → Authorized domains';
+        }
+        
+        alert(mensagemErro);
+        
+        // Reabilitar botão
+        btnGoogleLogin.disabled = false;
+        btnGoogleLogin.innerHTML = `
+            <svg width="18" height="18" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+                <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+                <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+                <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+                <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+                <path fill="none" d="M0 0h48v48H0z"/>
+            </svg>
+            Entrar com Google
+        `;
     }
 }
 
@@ -488,86 +558,4 @@ function renderizarPessoas() {
                     </div>
                 </div>
                 <div class="pessoa-actions">
-                    <button class="btn-icon edit" onclick="editarPessoa('${pessoa.firebaseId}')" id="btn-edit-${pessoa.firebaseId}" title="Editar">
-                        ✏️
-                    </button>
-                    <button class="btn-icon save" onclick="salvarEdicaoPessoa('${pessoa.firebaseId}')" id="btn-save-${pessoa.firebaseId}" style="display: none;" title="Salvar">
-                        ✓
-                    </button>
-                    <button class="btn-icon cancel" onclick="cancelarEdicaoPessoa('${pessoa.firebaseId}')" id="btn-cancel-${pessoa.firebaseId}" style="display: none;" title="Cancelar">
-                        ✕
-                    </button>
-                    <button class="btn-remover" onclick="removerPessoa('${pessoa.firebaseId}')">Remover</button>
-                </div>
-            </div>
-        `;
-    }).join('');
-}
-
-// Renderizar lista de despesas
-function renderizarDespesas() {
-    const lista = document.getElementById('listaDespesas');
-    
-    if (despesas.length === 0) {
-        lista.innerHTML = '<p class="empty-state">Nenhuma despesa cadastrada ainda</p>';
-        return;
-    }
-    
-    // Ordenar despesas por data (mais recente primeiro)
-    const despesasOrdenadas = [...despesas].sort((a, b) => 
-        new Date(b.data) - new Date(a.data)
-    );
-    
-    lista.innerHTML = despesasOrdenadas.map(despesa => {
-        const pagador = pessoas.find(p => p.id === despesa.pagadorId);
-        const participantes = despesa.pessoasSelecionadas.map(id => 
-            pessoas.find(p => p.id === id)?.nome
-        ).filter(Boolean);
-        
-        const data = new Date(despesa.data);
-        const dataFormatada = data.toLocaleDateString('pt-BR');
-        
-        return `
-            <div class="despesa-card">
-                <div class="despesa-header">
-                    <span class="despesa-titulo">${despesa.descricao}</span>
-                    <span class="despesa-valor">R$ ${despesa.valor.toFixed(2)}</span>
-                </div>
-                <div class="despesa-info">
-                    ${dataFormatada} • Pago por ${pagador?.nome || 'Desconhecido'}
-                </div>
-                <div class="despesa-info">
-                    R$ ${despesa.valorPorPessoa.toFixed(2)} por pessoa
-                </div>
-                <div class="despesa-divisao">
-                    ${participantes.map(nome => `<span class="tag">${nome}</span>`).join('')}
-                </div>
-                ${despesa.arquivo ? renderizarArquivo(despesa) : ''}
-                <div style="margin-top: 0.75rem;">
-                    <button class="btn-remover" onclick="removerDespesa('${despesa.firebaseId}')">Excluir</button>
-                </div>
-            </div>
-        `;
-    }).join('');
-}
-
-// Renderizar arquivo anexado (imagem ou PDF)
-function renderizarArquivo(despesa) {
-    // Compatibilidade com versão antiga que usava 'foto'
-    const arquivo = despesa.arquivo || despesa.foto;
-    const tipo = despesa.arquivoTipo || 'image/jpeg';
-    const nome = despesa.arquivoNome || 'recibo.jpg';
-    
-    if (!arquivo) return '';
-    
-    if (tipo.startsWith('image/')) {
-        return `
-            <div class="despesa-foto">
-                <img src="${arquivo}" alt="Recibo" onclick="abrirArquivo('${arquivo}', '${tipo}', '${nome}')">
-            </div>
-        `;
-    } else if (tipo === 'application/pdf') {
-        return `
-            <div class="despesa-foto" onclick="abrirArquivo('${arquivo}', '${tipo}', '${nome}')" style="cursor: pointer;">
-                <div style="padding: 1rem; background: var(--bg); border-radius: 8px; text-align: center;">
-                    <d
+                    <button class="btn-icon edit" onclick=
