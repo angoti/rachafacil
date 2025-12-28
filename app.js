@@ -61,41 +61,68 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Inicializar autenticação
 function inicializarAuth() {
+    console.log('=== INICIANDO AUTENTICAÇÃO ===');
+    console.log('Auth configurado:', !!auth);
+    console.log('Provider configurado:', !!googleProvider);
+    
     const btnGoogleLogin = document.getElementById('btnGoogleLogin');
     const btnLogout = document.getElementById('btnLogout');
     
+    console.log('Botão login encontrado:', !!btnGoogleLogin);
+    console.log('Botão logout encontrado:', !!btnLogout);
+    
     // Verificar se voltou de um redirect (mobile)
+    console.log('Verificando redirect result...');
     getRedirectResult(auth)
         .then((result) => {
+            console.log('Redirect result recebido:', result);
             if (result) {
                 currentUser = result.user;
-                console.log('Login por redirect realizado:', currentUser.displayName);
+                console.log('✅ Login por redirect OK:', currentUser.displayName);
+            } else {
+                console.log('Nenhum redirect pendente');
             }
         })
         .catch((error) => {
-            console.error('Erro no redirect:', error);
+            console.error('❌ ERRO no redirect:', error);
+            console.error('Código do erro:', error.code);
+            console.error('Mensagem:', error.message);
             if (error.code === 'auth/unauthorized-domain') {
                 alert('ERRO: Domínio não autorizado no Firebase. Adicione angoti.github.io nos domínios autorizados.');
             }
         });
     
     // Listener de login
-    btnGoogleLogin.addEventListener('click', loginComGoogle);
+    if (btnGoogleLogin) {
+        btnGoogleLogin.addEventListener('click', loginComGoogle);
+        console.log('✅ Click listener adicionado ao botão');
+    } else {
+        console.error('❌ ERRO: Botão não encontrado!');
+    }
     
     // Listener de logout
-    btnLogout.addEventListener('click', logout);
+    if (btnLogout) {
+        btnLogout.addEventListener('click', logout);
+    }
     
     // Observar mudanças no estado de autenticação
+    console.log('Configurando onAuthStateChanged...');
     onAuthStateChanged(auth, (user) => {
+        console.log('=== AUTH STATE CHANGED ===');
+        console.log('User object:', user);
         if (user) {
             // Usuário logado
             currentUser = user;
+            console.log('✅ USUÁRIO LOGADO');
+            console.log('Nome:', user.displayName);
+            console.log('Email:', user.email);
             mostrarApp();
             migrarDadosLocalStorage();
             inicializarListeners();
         } else {
             // Usuário deslogado
             currentUser = null;
+            console.log('❌ USUÁRIO DESLOGADO');
             mostrarLogin();
             limparListeners();
         }
@@ -104,37 +131,50 @@ function inicializarAuth() {
 
 // Login com Google
 async function loginComGoogle() {
-    console.log('Iniciando login com Google...');
+    console.log('');
+    console.log('=== BOTÃO CLICADO ===');
+    console.log('Timestamp:', new Date().toISOString());
+    console.log('User agent:', navigator.userAgent);
+    
     const btnGoogleLogin = document.getElementById('btnGoogleLogin');
     
     try {
         // Desabilitar botão durante login
         btnGoogleLogin.disabled = true;
         btnGoogleLogin.textContent = 'Carregando...';
+        console.log('Botão desabilitado');
         
         // Detectar se é mobile
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        console.log('É mobile?', isMobile);
         
         if (isMobile) {
             // Mobile: usar redirect (mais confiável, não é bloqueado)
-            console.log('Usando signInWithRedirect (mobile)...');
+            console.log('🔄 Iniciando signInWithRedirect...');
+            console.log('Auth:', auth);
+            console.log('Provider:', googleProvider);
             await signInWithRedirect(auth, googleProvider);
+            console.log('Redirect chamado (página deve redirecionar agora)');
             // A página vai recarregar após o redirect
         } else {
             // Desktop: usar popup
-            console.log('Usando signInWithPopup (desktop)...');
+            console.log('📱 Iniciando signInWithPopup...');
             const result = await signInWithPopup(auth, googleProvider);
             currentUser = result.user;
-            console.log('Login realizado com sucesso:', currentUser.displayName);
+            console.log('✅ Login popup OK:', currentUser.displayName);
         }
     } catch (error) {
-        console.error('Erro completo no login:', error);
-        console.error('Código do erro:', error.code);
+        console.error('');
+        console.error('=== ERRO NO LOGIN ===');
+        console.error('Error object completo:', error);
+        console.error('Código:', error.code);
         console.error('Mensagem:', error.message);
+        console.error('Stack:', error.stack);
         
         let mensagemErro = 'Erro ao fazer login. Tente novamente.';
         
         if (error.code === 'auth/popup-blocked') {
+            console.log('Popup bloqueado, tentando redirect...');
             mensagemErro = 'Popup bloqueado! Tentando método alternativo...';
             // Tentar redirect como fallback
             try {
@@ -147,7 +187,7 @@ async function loginComGoogle() {
         } else if (error.code === 'auth/popup-closed-by-user') {
             mensagemErro = 'Login cancelado.';
         } else if (error.code === 'auth/unauthorized-domain') {
-            mensagemErro = 'ERRO: Domínio não autorizado. Adicione angoti.github.io no Firebase Console → Authentication → Settings → Authorized domains';
+            mensagemErro = 'ERRO CRÍTICO!\n\nDomínio não autorizado.\n\nSolução:\n1. Acesse console.firebase.google.com\n2. Projeto: racha-facil-angoti\n3. Authentication → Settings\n4. Authorized domains → Add domain\n5. Digite: angoti.github.io';
         }
         
         alert(mensagemErro);
@@ -164,6 +204,7 @@ async function loginComGoogle() {
             </svg>
             Entrar com Google
         `;
+        console.log('Botão reabilitado');
     }
 }
 
@@ -514,48 +555,4 @@ async function removerDespesa(firebaseId) {
     if (!confirm('Tem certeza que deseja remover esta despesa?')) return;
     
     try {
-        await deleteDoc(doc(db, 'despesas', firebaseId));
-    } catch (error) {
-        console.error('Erro ao remover despesa:', error);
-        alert('Erro ao remover despesa. Tente novamente.');
-    }
-}
-
-// Atualizar interface
-function atualizarInterface() {
-    renderizarPessoas();
-    renderizarDespesas();
-    renderizarSaldos();
-}
-
-// Renderizar lista de pessoas
-function renderizarPessoas() {
-    const lista = document.getElementById('listaPessoas');
-    
-    if (pessoas.length === 0) {
-        lista.innerHTML = '<p class="empty-state">Cadastre as pessoas que participam das despesas</p>';
-        return;
-    }
-    
-    lista.innerHTML = pessoas.map(pessoa => {
-        // Pegar primeira letra do nome para o avatar
-        const inicial = pessoa.nome.charAt(0).toUpperCase();
-        
-        // Contar quantas despesas a pessoa está envolvida
-        const despesasCount = despesas.filter(d => 
-            d.pagadorId === pessoa.id || d.pessoasSelecionadas.includes(pessoa.id)
-        ).length;
-        
-        return `
-            <div class="pessoa-item" id="pessoa-${pessoa.firebaseId}">
-                <div class="pessoa-item-content">
-                    <div class="pessoa-avatar">${inicial}</div>
-                    <div class="pessoa-info">
-                        <span class="pessoa-nome" id="nome-${pessoa.firebaseId}">${pessoa.nome}</span>
-                        <input type="text" class="pessoa-nome-input" id="input-${pessoa.firebaseId}" 
-                               value="${pessoa.nome}" style="display: none;">
-                        ${despesasCount > 0 ? `<div class="pessoa-stats">${despesasCount} despesa${despesasCount > 1 ? 's' : ''}</div>` : ''}
-                    </div>
-                </div>
-                <div class="pessoa-actions">
-                    <button class="btn-icon edit" onclick=
+        await deleteDoc(doc(db, 'desp
