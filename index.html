@@ -7,6 +7,8 @@
     <link rel="manifest" href="manifest.json">
     <title>Racha Fácil</title>
     <link rel="stylesheet" href="style.css">
+    <!-- Tesseract.js para OCR -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
 <body>
     <div class="app">
@@ -139,6 +141,10 @@
                         <input type="file" id="fotoRecibo" accept="image/*,application/pdf" style="display: none;">
                         <input type="file" id="cameraRecibo" accept="image/*" capture="environment" style="display: none;">
                         <div id="previewFoto"></div>
+                        <div id="ocrStatus" style="display: none; margin-top: 0.75rem;"></div>
+                        <button type="button" id="btnExtrairValor" class="btn-secondary" style="display: none; margin-top: 0.75rem;">
+                            🔍 Extrair valor do recibo
+                        </button>
                     </div>
 
                     <div class="modal-actions">
