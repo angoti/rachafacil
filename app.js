@@ -937,7 +937,7 @@ function renderizarPessoas() {
                         </div>
                     </div>
                 </div>
-                <div class="pessoa-actions">
+                <div class="pessoa-actions" id="actions-${pessoa.firebaseId}">
                     <button class="btn-icon edit" onclick="editarPessoa('${pessoa.firebaseId}')" id="btn-edit-${pessoa.firebaseId}" title="Editar">
                         ✏️
                     </button>
