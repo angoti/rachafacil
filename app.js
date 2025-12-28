@@ -209,29 +209,36 @@ async function loginComGoogle() {
         btnGoogleLogin.textContent = 'Carregando...';
         console.log('Botao desabilitado');
         
-        // Detectar se é mobile
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        console.log('E mobile?', isMobile);
+        // SEMPRE TENTAR POPUP PRIMEIRO (mais confiável que redirect no seu caso)
+        console.log('[POPUP] Tentando signInWithPopup...');
+        console.log('Auth:', auth);
+        console.log('Provider:', googleProvider);
         
-        if (isMobile) {
-            // Mobile: usar redirect (mais confiável, não é bloqueado)
-            console.log('[REDIRECT] Iniciando signInWithRedirect...');
-            console.log('Auth:', auth);
-            console.log('Provider:', googleProvider);
-            
-            // Salvar flag no localStorage para saber que iniciamos o redirect
-            localStorage.setItem('pendingGoogleRedirect', 'true');
-            console.log('Flag de redirect salva no localStorage');
-            
-            await signInWithRedirect(auth, googleProvider);
-            console.log('Redirect chamado (pagina deve redirecionar agora)');
-            // A página vai recarregar após o redirect
-        } else {
-            // Desktop: usar popup
-            console.log('[POPUP] Iniciando signInWithPopup...');
+        try {
             const result = await signInWithPopup(auth, googleProvider);
             currentUser = result.user;
             console.log('[OK] Login popup OK:', currentUser.displayName);
+            console.log('User UID:', currentUser.uid);
+            console.log('User email:', currentUser.email);
+            // Login bem sucedido, não precisa fazer mais nada
+            return;
+        } catch (popupError) {
+            console.error('[ERRO] Popup falhou:', popupError.code);
+            
+            if (popupError.code === 'auth/popup-blocked' || popupError.code === 'auth/cancelled-popup-request') {
+                console.log('Popup bloqueado, tentando redirect...');
+                
+                // Salvar flag no localStorage
+                localStorage.setItem('pendingGoogleRedirect', 'true');
+                console.log('Flag de redirect salva');
+                
+                await signInWithRedirect(auth, googleProvider);
+                console.log('Redirect chamado');
+                return;
+            } else {
+                // Outro erro, propagar
+                throw popupError;
+            }
         }
     } catch (error) {
         console.error('');
@@ -241,24 +248,14 @@ async function loginComGoogle() {
         console.error('Mensagem:', error.message);
         console.error('Stack:', error.stack);
         
-        let mensagemErro = 'Erro ao fazer login. Tente novamente.';
+        let mensagemErro = 'Erro ao fazer login: ' + error.code;
         
-        if (error.code === 'auth/popup-blocked') {
-            console.log('Popup bloqueado, tentando redirect...');
-            mensagemErro = 'Popup bloqueado! Tentando metodo alternativo...';
-            // Tentar redirect como fallback
-            try {
-                localStorage.setItem('pendingGoogleRedirect', 'true');
-                await signInWithRedirect(auth, googleProvider);
-                return; // Vai redirecionar, não precisa mostrar erro
-            } catch (redirectError) {
-                console.error('Erro no redirect tambem:', redirectError);
-                mensagemErro = 'Nao foi possivel fazer login. Verifique suas configuracoes de privacidade.';
-            }
-        } else if (error.code === 'auth/popup-closed-by-user') {
-            mensagemErro = 'Login cancelado.';
+        if (error.code === 'auth/popup-closed-by-user') {
+            mensagemErro = 'Voce fechou a janela de login.';
         } else if (error.code === 'auth/unauthorized-domain') {
-            mensagemErro = 'ERRO CRITICO!\n\nDominio nao autorizado.\n\nSolucao:\n1. Acesse console.firebase.google.com\n2. Projeto: racha-facil-angoti\n3. Authentication > Settings\n4. Authorized domains > Add domain\n5. Digite: angoti.github.io';
+            mensagemErro = 'ERRO: Dominio nao autorizado no Firebase.';
+        } else if (error.code === 'auth/network-request-failed') {
+            mensagemErro = 'Erro de rede. Verifique sua conexao.';
         }
         
         alert(mensagemErro);
