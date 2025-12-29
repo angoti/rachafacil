@@ -31,6 +31,17 @@ const expenseModal = document.getElementById('expenseModal');
 const settlementModal = document.getElementById('settlementModal');
 const calculateButton = document.getElementById('calculateButton');
 
+// Verificar resultado do redirect ao carregar a página
+auth.getRedirectResult()
+    .then((result) => {
+        if (result.user) {
+            console.log('Login bem-sucedido via redirect');
+        }
+    })
+    .catch((error) => {
+        console.error('Erro no redirect:', error);
+    });
+
 // Auth state observer
 auth.onAuthStateChanged(async (user) => {
     if (user) {
