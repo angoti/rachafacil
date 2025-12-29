@@ -3,160 +3,224 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#4F46E5">
+    <title>Racha Fácil - Divisão de Despesas</title>
     <link rel="manifest" href="manifest.json">
-    <title>Racha Fácil</title>
-    <link rel="stylesheet" href="style.css">
-    <!-- Tesseract.js para OCR -->
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <meta name="theme-color" content="#4CAF50">
+    <link rel="apple-touch-icon" href="icon-192.png">
 </head>
 <body>
-    <div class="app">
-        <!-- Tela de Login -->
-        <div id="loginScreen" class="login-screen">
-            <div class="login-container">
-                <div class="login-header">
-                    <div class="login-icon">💰</div>
-                    <h1>Racha Fácil</h1>
-                    <p>Divida despesas com seus amigos</p>
-                </div>
-                
-                <button class="btn-google-login" id="btnGoogleLogin">
-                    <svg width="18" height="18" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
-                        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-                        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-                        <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
-                        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-                        <path fill="none" d="M0 0h48v48H0z"/>
-                    </svg>
-                    Entrar com Google
-                </button>
-                
-                <div class="login-footer">
-                    <p>Seus dados são sincronizados na nuvem</p>
-                </div>
+    <!-- Tela de Login -->
+    <div id="loginScreen" class="screen active">
+        <div class="login-container">
+            <div class="app-icon">
+                <span class="material-icons">receipt_long</span>
             </div>
+            <h1>Racha Fácil</h1>
+            <p class="subtitle">Divida despesas com facilidade</p>
+            <button id="loginButton" class="btn-primary">
+                <span class="material-icons">login</span>
+                Entrar com Google
+            </button>
         </div>
+    </div>
 
-        <!-- App Principal -->
-        <div id="appContainer" style="display: none;">
+    <!-- Tela Principal -->
+    <div id="mainScreen" class="screen">
         <!-- Header -->
-        <header class="header">
+        <header class="app-header">
             <div class="header-content">
-                <h1>💰 Racha Fácil</h1>
-                <div class="header-user">
-                    <img id="userPhoto" class="user-photo" src="" alt="">
-                    <button class="btn-logout" id="btnLogout" title="Sair">⎋</button>
+                <h1>Racha Fácil</h1>
+                <div class="header-actions">
+                    <button id="calculateButton" class="btn-calculate">
+                        <span class="material-icons">calculate</span>
+                        Calcular Acerto
+                    </button>
+                    <button id="logoutButton" class="btn-icon">
+                        <span class="material-icons">logout</span>
+                    </button>
                 </div>
             </div>
         </header>
 
         <!-- Tabs -->
-        <nav class="tabs">
-            <button class="tab active" data-tab="despesas">Despesas</button>
-            <button class="tab" data-tab="pessoas">Pessoas</button>
-            <button class="tab" data-tab="saldos">Saldos</button>
-        </nav>
-
-        <!-- Conteúdo das Tabs -->
-        <main class="content">
-            <!-- Tab: Despesas -->
-            <section id="despesas" class="tab-content active">
-                <button class="btn-primary" id="btnNovaDespesa">+ Nova Despesa</button>
-                
-                <div id="listaDespesas" class="lista-despesas">
-                    <p class="empty-state">Nenhuma despesa cadastrada ainda</p>
-                </div>
-            </section>
-
-            <!-- Tab: Pessoas -->
-            <section id="pessoas" class="tab-content">
-                <div class="add-pessoa-container">
-                    <div class="input-wrapper">
-                        <input type="text" id="inputNovaPessoa" placeholder="Nome da pessoa" class="input-full">
-                        <button class="btn-add-inline" id="btnAdicionarPessoa">
-                            <span>+</span>
-                        </button>
-                    </div>
-                </div>
-                
-                <div id="listaPessoas" class="lista-pessoas">
-                    <p class="empty-state">Cadastre as pessoas que participam das despesas</p>
-                </div>
-            </section>
-
-            <!-- Tab: Saldos -->
-            <section id="saldos" class="tab-content">
-                <div id="listaSaldos" class="lista-saldos">
-                    <p class="empty-state">Cadastre despesas para ver os saldos</p>
-                </div>
-            </section>
-        </main>
-
-        <!-- Lightbox para visualizar imagens -->
-        <div id="lightbox" class="lightbox">
-            <span class="lightbox-close">&times;</span>
-            <img class="lightbox-content" id="lightbox-img">
-            <div id="lightbox-caption"></div>
+        <div class="tabs">
+            <button class="tab active" data-tab="expenses">
+                <span class="material-icons">receipt</span>
+                Despesas
+            </button>
+            <button class="tab" data-tab="participants">
+                <span class="material-icons">people</span>
+                Participantes
+            </button>
         </div>
 
-        <!-- Modal: Nova Despesa -->
-        <div id="modalDespesa" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2 id="tituloModal">Nova Despesa</h2>
-                    <button class="btn-close" id="btnFecharModal">&times;</button>
-                </div>
-                
-                <form id="formDespesa">
-                    <div class="form-group">
-                        <label>Descrição</label>
-                        <input type="text" id="descricao" required placeholder="Ex: Almoço, Uber, Mercado">
-                    </div>
+        <!-- Tab: Despesas -->
+        <div id="expensesTab" class="tab-content active">
+            <div class="fab-container">
+                <button id="addExpenseButton" class="fab">
+                    <span class="material-icons">add</span>
+                </button>
+            </div>
 
-                    <div class="form-group">
-                        <label>Valor (R$)</label>
-                        <input type="number" id="valor" step="0.01" required placeholder="0.00">
-                    </div>
+            <div id="expensesList" class="expenses-list">
+                <!-- Despesas serão inseridas aqui -->
+            </div>
 
-                    <div class="form-group">
-                        <label>Quem pagou?</label>
-                        <select id="pagador" required>
-                            <option value="">Selecione...</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Dividir com:</label>
-                        <div id="checkboxPessoas" class="checkbox-group">
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Recibo (opcional)</label>
-                        <div style="display: flex; gap: 0.5rem; margin-bottom: 0.75rem;">
-                            <button type="button" class="btn-secondary" id="btnCamera" style="flex: 1; margin: 0;">📷 Câmera</button>
-                            <button type="button" class="btn-secondary" id="btnArquivo" style="flex: 1; margin: 0;">📁 Arquivo</button>
-                        </div>
-                        <input type="file" id="fotoRecibo" accept="image/*,application/pdf" style="display: none;">
-                        <input type="file" id="cameraRecibo" accept="image/*" capture="environment" style="display: none;">
-                        <div id="previewFoto"></div>
-                        <div id="ocrStatus" style="display: none; margin-top: 0.75rem;"></div>
-                        <button type="button" id="btnExtrairValor" class="btn-secondary" style="display: none; margin-top: 0.75rem;">
-                            🔍 Extrair valor do recibo
-                        </button>
-                    </div>
-
-                    <div class="modal-actions">
-                        <button type="button" class="btn-secondary" id="btnCancelar">Cancelar</button>
-                        <button type="submit" class="btn-primary">Salvar</button>
-                    </div>
-                </form>
+            <div id="emptyExpenses" class="empty-state">
+                <span class="material-icons">receipt_long</span>
+                <p>Nenhuma despesa ainda</p>
+                <p class="empty-subtitle">Adicione a primeira despesa da viagem</p>
             </div>
         </div>
+
+        <!-- Tab: Participantes -->
+        <div id="participantsTab" class="tab-content">
+            <div id="participantsList" class="participants-list">
+                <!-- Participantes serão inseridos aqui -->
+            </div>
+
+            <div id="emptyParticipants" class="empty-state">
+                <span class="material-icons">people</span>
+                <p>Nenhum participante ainda</p>
+                <p class="empty-subtitle">Faça login para participar</p>
+            </div>
         </div>
     </div>
 
-    <script type="module" src="app.js"></script>
+    <!-- Modal: Adicionar/Editar Despesa -->
+    <div id="expenseModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Nova Despesa</h2>
+                <button class="btn-icon close-modal">
+                    <span class="material-icons">close</span>
+                </button>
+            </div>
+
+            <div class="modal-body">
+                <!-- Foto do recibo -->
+                <div class="photo-section">
+                    <input type="file" id="photoInput" accept="image/*" capture="environment" style="display: none;">
+                    <button id="takePhotoButton" class="btn-photo">
+                        <span class="material-icons">camera_alt</span>
+                        Fotografar Recibo
+                    </button>
+                    <div id="photoPreview" class="photo-preview" style="display: none;">
+                        <img id="previewImage" src="" alt="Preview">
+                        <button id="removePhotoButton" class="btn-icon-small">
+                            <span class="material-icons">close</span>
+                        </button>
+                    </div>
+                    <div id="ocrLoading" class="ocr-loading" style="display: none;">
+                        <div class="spinner"></div>
+                        <p>Processando recibo...</p>
+                    </div>
+                </div>
+
+                <!-- Descrição -->
+                <div class="form-group">
+                    <label for="expenseDescription">Descrição</label>
+                    <input type="text" id="expenseDescription" placeholder="Ex: Pizza, Uber, Hotel..." required>
+                </div>
+
+                <!-- Valor -->
+                <div class="form-group">
+                    <label for="expenseValue">Valor Total (R$)</label>
+                    <input type="number" id="expenseValue" step="0.01" placeholder="0,00" required>
+                </div>
+
+                <!-- Quem Pagou -->
+                <div class="form-group">
+                    <label for="paidBy">Quem Pagou?</label>
+                    <select id="paidBy" required>
+                        <option value="">Selecione...</option>
+                    </select>
+                </div>
+
+                <!-- Participantes -->
+                <div class="form-group">
+                    <label>Participantes desta Despesa</label>
+                    <div id="participantsCheckboxes" class="checkboxes-container">
+                        <!-- Checkboxes serão inseridos aqui -->
+                    </div>
+                </div>
+
+                <!-- Tipo de Divisão -->
+                <div class="form-group">
+                    <label>Como dividir?</label>
+                    <div class="division-options">
+                        <label class="radio-option">
+                            <input type="radio" name="divisionType" value="equal" checked>
+                            <span>Dividir Igualmente</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="divisionType" value="custom">
+                            <span>Valores Customizados</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Valores Customizados -->
+                <div id="customValuesSection" class="form-group" style="display: none;">
+                    <label>Quanto cada um deve?</label>
+                    <div id="customValuesInputs" class="custom-values-container">
+                        <!-- Inputs customizados serão inseridos aqui -->
+                    </div>
+                    <div id="sumWarning" class="warning-message" style="display: none;">
+                        ⚠️ A soma deve ser igual ao valor total
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn-secondary close-modal">Cancelar</button>
+                <button id="saveExpenseButton" class="btn-primary">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Calcular Acerto -->
+    <div id="settlementModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Acerto Final</h2>
+                <button class="btn-icon close-modal">
+                    <span class="material-icons">close</span>
+                </button>
+            </div>
+
+            <div class="modal-body">
+                <!-- Resumo -->
+                <div id="settlementSummary" class="settlement-summary">
+                    <!-- Resumo será inserido aqui -->
+                </div>
+
+                <!-- Transferências -->
+                <div id="settlementTransfers" class="settlement-transfers">
+                    <!-- Transferências serão inseridas aqui -->
+                </div>
+
+                <div id="emptySettlement" class="empty-state" style="display: none;">
+                    <span class="material-icons">check_circle</span>
+                    <p>Tudo acertado!</p>
+                    <p class="empty-subtitle">Não há transferências pendentes</p>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn-primary close-modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.1.1/dist/tesseract.min.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>
