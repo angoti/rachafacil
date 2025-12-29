@@ -1,49 +1,162 @@
-# 💰 Racha Fácil
+# Racha Fácil v2.0 🧾✨
 
-App simples para dividir despesas entre amigos.
+App colaborativo para dividir despesas em viagens e eventos.
 
-## ✨ Funcionalidades
+## 🆕 Novidades da Versão 2.0
 
-- ✅ Cadastro de pessoas
-- ✅ Registro de despesas com foto do recibo
-- ✅ Divisão automática entre participantes
-- ✅ Cálculo de quem deve pra quem
-- ✅ Funciona offline (dados salvos no navegador)
-- ✅ Instalável como app no celular
+### Auto-cadastro de Participantes
+- ✅ Não precisa mais cadastrar pessoas manualmente
+- ✅ Todos que fazem login automaticamente participam
+- ✅ Lista de participantes atualiza em tempo real
 
-## 🚀 Como usar
+### Despesas Customizáveis
+- ✅ Selecione quem participou de cada despesa
+- ✅ Informe quem pagou a conta
+- ✅ Divida igualmente OU customize valores por pessoa
+- ✅ Validação automática da soma
 
-1. Abra o `index.html` no navegador
-2. Cadastre as pessoas na aba "Pessoas"
-3. Adicione despesas na aba "Despesas"
-4. Veja quem deve pra quem na aba "Saldos"
+### Cálculo Otimizado
+- ✅ Algoritmo que minimiza transferências
+- ✅ Mostra quem deve pagar para quem
+- ✅ Resumo individual de cada participante
 
-## 📱 Instalar no celular
+### Recursos Mantidos
+- 📸 OCR de recibos (extração automática de valores)
+- 🖼️ Imagens salvas em base64 no Firestore (limite: 1MB por imagem)
+- 🔄 Sincronização em tempo real
+- 📱 PWA (funciona offline)
+- 🔐 Autenticação Google
 
-No Chrome/Edge do Android:
-- Menu (⋮) → "Adicionar à tela inicial"
+## 🎯 Caso de Uso
 
-No Safari do iOS:
-- Compartilhar → "Adicionar à Tela de Início"
+**Viagem de 10 dias entre amigos:**
 
-## 🔧 Próximas melhorias
+1. Todos fazem login no app
+2. Durante a viagem, qualquer um adiciona despesas:
+   - "Pizza R$ 80" → João, Maria e Pedro participam
+   - "Uber R$ 30" → Só João e Maria
+   - "Hotel R$ 600" → Todos participam
+3. No final da viagem: clica em "Calcular Acerto"
+4. O app mostra quem deve pagar para quem (otimizado!)
 
-- [ ] OCR para ler valores dos recibos automaticamente
-- [ ] Sincronização na nuvem (Firebase)
-- [ ] Notificações de lembretes
-- [ ] Exportar relatórios
-- [ ] Múltiplas moedas
-- [ ] Divisão não-igualitária (% customizada)
+## 📊 Estrutura de Dados
 
-## 💾 Armazenamento
+```javascript
+users/ (auto-cadastro)
+  {uid}/
+    name, email, photoURL, lastLogin
 
-Os dados ficam salvos no localStorage do navegador. Para não perder:
-- Não limpe os dados do navegador
-- Futuramente: backup na nuvem
+expenses/
+  {expenseId}/
+    description: "Pizza"
+    totalValue: 80
+    paidBy: "uid_de_quem_pagou"
+    splits: {
+      "uid1": 30,
+      "uid2": 25,
+      "uid3": 25
+    }
+    imageBase64: "data:image/jpeg;base64,..." // Imagem em base64
+    createdBy: "uid"
+    createdAt: timestamp
+```
 
-## 🛠️ Tecnologias
+## 🔧 Como Usar
 
-- HTML5 + CSS3 + JavaScript puro
-- LocalStorage para dados
-- PWA (Progressive Web App)
-- Camera API para fotos
+### 1. Adicionar Despesa
+
+1. Clique no botão "+"
+2. (Opcional) Fotografe o recibo (OCR extrai o valor)
+3. Preencha descrição e valor
+4. Selecione **quem pagou**
+5. Marque os **participantes** da despesa
+6. Escolha: "Dividir Igualmente" ou "Valores Customizados"
+7. Salve
+
+### 2. Calcular Acerto
+
+1. Clique em "Calcular Acerto"
+2. Veja o resumo individual (quem deve/recebe)
+3. Veja as transferências necessárias (otimizadas!)
+
+## 🧮 Algoritmo de Otimização
+
+O app usa um algoritmo de **balanço de dívidas** que:
+
+1. Calcula quanto cada pessoa pagou vs. quanto deve
+2. Identifica credores (saldo positivo) e devedores (saldo negativo)
+3. Encontra o maior credor e maior devedor
+4. Cria transferência entre eles
+5. Repete até zerar todos os balanços
+
+**Resultado:** Mínimo de transferências necessárias! 🎉
+
+### Exemplo:
+
+**Sem otimização:**
+- Maria paga R$ 20 para João
+- Maria paga R$ 20 para Pedro
+- Lucas paga R$ 30 para João
+- Lucas paga R$ 10 para Pedro
+*Total: 4 transferências*
+
+**Com otimização:**
+- Maria paga R$ 40 para João
+- Lucas paga R$ 30 para João
+- Lucas paga R$ 10 para Pedro
+*Total: 3 transferências* ✅
+
+## 🚀 Deploy
+
+1. Faça upload dos arquivos para o GitHub Pages
+2. Configure Firebase (Authentication e Firestore apenas - **não precisa de Storage**)
+3. Atualize as regras do Firestore:
+
+```javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth.uid == userId;
+    }
+    
+    match /expenses/{expenseId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth.uid == resource.data.createdBy;
+    }
+  }
+}
+```
+
+## 📱 Compatibilidade
+
+- ✅ Chrome/Edge (desktop e mobile)
+- ✅ Safari (iOS)
+- ✅ Firefox
+- ✅ PWA instalável
+- ✅ Funciona offline (após primeira carga)
+
+## 🎨 Tecnologias
+
+- HTML5 + CSS3 + JavaScript
+- Firebase (Auth e Firestore)
+- Tesseract.js (OCR)
+- Material Icons
+- Service Worker (PWA)
+- Base64 para armazenamento de imagens
+
+## 📝 Próximas Melhorias
+
+- [ ] Múltiplos eventos/viagens
+- [ ] Histórico de acertos passados
+- [ ] Exportar relatório em PDF
+- [ ] Gráficos de gastos
+- [ ] Notificações push
+- [ ] Categorias de despesas
+- [ ] Multi-moeda
+
+---
+
+**Desenvolvido para viagens inesquecíveis sem dor de cabeça! 🏖️💰**
