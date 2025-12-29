@@ -1,4 +1,4 @@
-const CACHE_NAME = 'racha-facil-v2';
+const CACHE_NAME = 'racha-facil-v3'; // Incrementado para forçar atualização
 const urlsToCache = [
   '/rachafacil/',
   '/rachafacil/index.html',
