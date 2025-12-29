@@ -2,7 +2,7 @@ const CACHE_NAME = 'racha-facil-v2';
 const urlsToCache = [
   '/rachafacil/',
   '/rachafacil/index.html',
-  '/rachafacil/styles.css',
+  '/rachafacil/style.css',
   '/rachafacil/app.js',
   '/rachafacil/manifest.json',
   'https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap',
