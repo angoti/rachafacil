@@ -103,11 +103,17 @@
             <div class="modal-body">
                 <!-- Foto do recibo -->
                 <div class="photo-section">
-                    <input type="file" id="photoInput" accept="image/*" capture="environment" style="display: none;">
-                    <button id="takePhotoButton" class="btn-photo">
-                        <span class="material-icons">camera_alt</span>
-                        Fotografar Recibo
-                    </button>
+                    <input type="file" id="photoInput" accept="image/*" style="display: none;">
+                    <div class="photo-buttons">
+                        <button id="takePhotoButton" class="btn-photo">
+                            <span class="material-icons">camera_alt</span>
+                            Fotografar
+                        </button>
+                        <button id="chooseFileButton" class="btn-photo">
+                            <span class="material-icons">image</span>
+                            Escolher Arquivo
+                        </button>
+                    </div>
                     <div id="photoPreview" class="photo-preview" style="display: none;">
                         <img id="previewImage" src="" alt="Preview">
                         <button id="removePhotoButton" class="btn-icon-small">
