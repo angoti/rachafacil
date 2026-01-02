@@ -137,6 +137,12 @@ function showMainScreen() {
     console.log('mainScreen:', mainScreen);
     loginScreen.classList.remove('active');
     mainScreen.classList.add('active');
+    
+    // Atualizar avatar do usuário
+    if (currentUser && currentUser.photoURL) {
+        document.getElementById('userAvatarImg').src = currentUser.photoURL;
+    }
+    
     console.log('✅ Tela principal deve estar visível agora');
 }
 
@@ -425,22 +431,49 @@ function extractValue(text) {
 }
 
 function extractDate(text) {
-    // Formatos: DD/MM/YYYY, DD-MM-YYYY, DD.MM.YYYY
+    // Remover espaços extras e normalizar
+    const cleanText = text.replace(/\s+/g, ' ');
+    
+    // Múltiplos formatos de data
     const patterns = [
-        /(\d{2})[\/\-\.](\d{2})[\/\-\.](\d{4})/,  // DD/MM/YYYY
-        /(\d{2})[\/\-\.](\d{2})[\/\-\.](\d{2})/   // DD/MM/YY
+        // DD/MM/YYYY ou DD-MM-YYYY ou DD.MM.YYYY
+        /(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})/g,
+        // DD/MM/YY ou DD-MM-YY
+        /(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2})(?!\d)/g,
+        // Formatos com texto: "Data: DD/MM/YYYY" ou "DATA DD/MM/YYYY"
+        /data[:\s]+(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})/gi,
+        // Formato brasileiro escrito: "DD de JANEIRO de YYYY"
+        /(\d{1,2})\s+de\s+(janeiro|fevereiro|março|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)\s+de\s+(\d{4})/gi
     ];
 
+    const monthMap = {
+        'janeiro': '01', 'fevereiro': '02', 'março': '03', 'abril': '04',
+        'maio': '05', 'junho': '06', 'julho': '07', 'agosto': '08',
+        'setembro': '09', 'outubro': '10', 'novembro': '11', 'dezembro': '12'
+    };
+
     for (const pattern of patterns) {
-        const match = text.match(pattern);
-        if (match) {
-            let day = match[1];
-            let month = match[2];
-            let year = match[3];
+        const matches = [...cleanText.matchAll(pattern)];
+        
+        for (const match of matches) {
+            let day, month, year;
+            
+            // Formato com nome do mês
+            if (match[0].toLowerCase().includes('de')) {
+                day = match[1].padStart(2, '0');
+                month = monthMap[match[2].toLowerCase()];
+                year = match[3];
+            } else {
+                day = match[1].padStart(2, '0');
+                month = match[2].padStart(2, '0');
+                year = match[3];
+            }
             
             // Se ano tem 2 dígitos, assumir 20XX
             if (year.length === 2) {
-                year = '20' + year;
+                const yearNum = parseInt(year);
+                // Se >= 50, assumir 19XX, senão 20XX
+                year = yearNum >= 50 ? '19' + year : '20' + year;
             }
             
             // Validar data
@@ -448,55 +481,128 @@ function extractDate(text) {
             const m = parseInt(month);
             const y = parseInt(year);
             
-            if (d >= 1 && d <= 31 && m >= 1 && m <= 12 && y >= 2020 && y <= 2030) {
-                return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-            }
+            // Validações mais rigorosas
+            if (d < 1 || d > 31) continue;
+            if (m < 1 || m > 12) continue;
+            if (y < 2020 || y > 2030) continue;
+            
+            // Validar dia do mês
+            const daysInMonth = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+            if (d > daysInMonth[m - 1]) continue;
+            
+            // Data válida encontrada
+            console.log(`✅ Data encontrada: ${day}/${month}/${year}`);
+            return `${year}-${month}-${day}`;
         }
     }
+    
+    console.log('⚠️ Nenhuma data válida encontrada');
     return null;
 }
 
 function extractTime(text) {
-    // Formatos: HH:MM, HH:MM:SS
+    // Remover espaços extras
+    const cleanText = text.replace(/\s+/g, ' ');
+    
+    // Múltiplos formatos de hora
     const patterns = [
-        /(\d{2}):(\d{2})(?::\d{2})?/g
+        // Com palavra "hora" ou "horário"
+        /(?:hora|horário|time)[:\s]*(\d{1,2})[:\.](\d{2})/gi,
+        // Formato padrão HH:MM ou HH.MM
+        /\b(\d{1,2})[:\.](\d{2})\b/g,
+        // Com segundos HH:MM:SS
+        /\b(\d{1,2})[:\.](\d{2})[:\.](\d{2})\b/g
     ];
 
+    const validTimes = [];
+
     for (const pattern of patterns) {
-        const matches = [...text.matchAll(pattern)];
+        const matches = [...cleanText.matchAll(pattern)];
+        
         for (const match of matches) {
             const hour = parseInt(match[1]);
             const minute = parseInt(match[2]);
             
             // Validar horário (00:00 a 23:59)
             if (hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59) {
-                return `${match[1]}:${match[2]}`;
+                const timeStr = `${match[1].padStart(2, '0')}:${match[2].padStart(2, '0')}`;
+                
+                // Evitar horários improváveis em notas fiscais (madrugada)
+                // Priorizar horários entre 6h e 23h
+                const priority = (hour >= 6 && hour <= 23) ? 1 : 0;
+                
+                validTimes.push({ time: timeStr, priority, hour });
             }
         }
     }
-    return null;
+
+    if (validTimes.length === 0) {
+        console.log('⚠️ Nenhuma hora válida encontrada');
+        return null;
+    }
+
+    // Ordenar por prioridade (horários comerciais primeiro)
+    validTimes.sort((a, b) => b.priority - a.priority);
+    
+    console.log(`✅ Hora encontrada: ${validTimes[0].time}`);
+    return validTimes[0].time;
 }
 
 function extractDescription(text) {
-    // Pegar primeira linha não vazia com mais de 3 caracteres
-    // Ignorar linhas que parecem ser cabeçalhos de nota fiscal
+    // Pegar linhas não vazias
     const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
     
+    // Padrões para ignorar (cabeçalhos comuns em notas fiscais)
     const ignorePatterns = [
         /^cnpj/i,
         /^cpf/i,
-        /^nota fiscal/i,
+        /^nota\s*fiscal/i,
         /^cupom/i,
         /^recibo/i,
+        /^nf[-\s]?e/i,
+        /^danfe/i,
         /^\d+$/,  // Apenas números
         /^data:/i,
-        /^hora:/i
+        /^hora:/i,
+        /^valor/i,
+        /^total/i,
+        /^subtotal/i,
+        /^desconto/i,
+        /^quantidade/i,
+        /^cod/i,
+        /^item/i,
+        /^\d+[\/\-\.]\d+[\/\-\.]\d+/,  // Datas
+        /^\d+:\d+/,  // Horas
+        /^r\$\s*\d/i,  // Valores
     ];
     
+    // Procurar por padrões que indicam nome de estabelecimento
+    const establishmentPatterns = [
+        /^([A-ZÀÁÂÃÄÅÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜÝ][A-Za-zÀ-ÿ\s&\-]{2,40})\s*$/,  // Nome próprio
+        /razão\s*social[:\s]*([A-Z][A-Za-zÀ-ÿ\s&\-]{3,50})/i,
+        /nome\s*fantasia[:\s]*([A-Z][A-Za-zÀ-ÿ\s&\-]{3,50})/i,
+    ];
+
+    // Primeiro tentar encontrar nome de estabelecimento
+    for (const line of lines.slice(0, 10)) {  // Primeiras 10 linhas
+        for (const pattern of establishmentPatterns) {
+            const match = line.match(pattern);
+            if (match) {
+                const name = (match[1] || match[0]).trim();
+                if (name.length >= 3 && name.length <= 50) {
+                    console.log(`✅ Estabelecimento encontrado: ${name}`);
+                    return name;
+                }
+            }
+        }
+    }
+    
+    // Se não encontrou estabelecimento, pegar primeira linha válida
     for (const line of lines) {
-        // Ignorar linhas muito curtas ou que batem com padrões a ignorar
-        if (line.length < 3) continue;
+        // Ignorar linhas muito curtas ou muito longas
+        if (line.length < 3 || line.length > 50) continue;
         
+        // Verificar se deve ignorar
         let shouldIgnore = false;
         for (const pattern of ignorePatterns) {
             if (pattern.test(line)) {
@@ -506,11 +612,12 @@ function extractDescription(text) {
         }
         
         if (!shouldIgnore) {
-            // Limitar a 50 caracteres
-            return line.slice(0, 50);
+            console.log(`✅ Descrição encontrada: ${line}`);
+            return line;
         }
     }
     
+    console.log('⚠️ Nenhuma descrição válida encontrada');
     return null;
 }
 
