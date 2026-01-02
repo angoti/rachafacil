@@ -1,11 +1,11 @@
 // Configuração Firebase
 const firebaseConfig = {
-    apiKey: "AIzaSyC_obrH9qxgV5b8JfPB2ILyMUUrcOmqYxQ",
-    authDomain: "rachafacil-73fcd.firebaseapp.com",
-    projectId: "rachafacil-73fcd",
-    storageBucket: "rachafacil-73fcd.firebasestorage.app",
-    messagingSenderId: "506462611230",
-    appId: "1:506462611230:web:1d86bd48b3e8e05e9c6739"
+    apiKey: "AIzaSyDj1sXtBjPR1bHi-5bocY6hivgPriIaZxY",
+    authDomain: "racha-facil-angoti.firebaseapp.com",
+    projectId: "racha-facil-angoti",
+    storageBucket: "racha-facil-angoti.firebasestorage.app",
+    messagingSenderId: "117782293926",
+    appId: "1:117782293926:web:9fccaf880bfea0561c7367"
 };
 
 // Debug visual
