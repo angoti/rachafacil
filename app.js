@@ -12,6 +12,15 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
+// CRÍTICO: Configurar persistência LOCAL para manter login após redirect
+auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+    .then(() => {
+        console.log('Persistência LOCAL ativada');
+    })
+    .catch((error) => {
+        console.error('Erro ao configurar persistência:', error);
+    });
+
 // Estado global
 let currentUser = null;
 let allUsers = [];
