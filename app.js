@@ -8,52 +8,18 @@ const firebaseConfig = {
     appId: "1:117782293926:web:9fccaf880bfea0561c7367"
 };
 
-// Debug visual
-const debugConsole = document.getElementById('debugConsole');
-const toggleDebugBtn = document.getElementById('toggleDebug');
-
-function debugLog(message, isError = false) {
-    const timestamp = new Date().toLocaleTimeString();
-    const color = isError ? '#ff5555' : '#00ff00';
-    debugConsole.innerHTML += `<div style="color: ${color}">[${timestamp}] ${message}</div>`;
-    debugConsole.scrollTop = debugConsole.scrollHeight;
-    console.log(message);
-}
-
-toggleDebugBtn.addEventListener('click', () => {
-    if (debugConsole.style.display === 'none') {
-        debugConsole.style.display = 'block';
-        toggleDebugBtn.textContent = 'Ocultar Debug';
-    } else {
-        debugConsole.style.display = 'none';
-        toggleDebugBtn.textContent = 'Mostrar Debug';
-    }
-});
-
-// Verificar se Firebase está disponível
-if (typeof firebase === 'undefined') {
-    debugLog('ERRO: Firebase não carregou!', true);
-    alert('Erro ao carregar Firebase. Recarregue a página.');
-} else {
-    debugLog('✓ Firebase disponível: v' + firebase.SDK_VERSION);
-}
-
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
-
-debugLog('✓ Firebase inicializado');
-debugLog('✓ Auth: ' + (auth ? 'OK' : 'ERRO'));
-debugLog('✓ DB: ' + (db ? 'OK' : 'ERRO'));
 
 // Estado global
 let currentUser = null;
 let allUsers = [];
 let allExpenses = [];
 let editingExpenseId = null;
-let currentPhotoBase64 = null; // Armazenar foto em base64
+let currentPhotoBase64 = null;
 
-// Elementos DOM
+// Elementos DOM - buscar quando o script rodar (HTML já carregou pois script está no final)
 const loginScreen = document.getElementById('loginScreen');
 const mainScreen = document.getElementById('mainScreen');
 const loginButton = document.getElementById('loginButton');
@@ -65,34 +31,29 @@ const expenseModal = document.getElementById('expenseModal');
 const settlementModal = document.getElementById('settlementModal');
 const calculateButton = document.getElementById('calculateButton');
 
-// Verificar resultado do redirect ao carregar a página
-debugLog('Verificando redirect result...');
-auth.getRedirectResult()
-    .then((result) => {
-        if (result.user) {
-            debugLog('✓ Login via redirect: ' + result.user.displayName);
-        } else {
-            debugLog('Nenhum redirect pendente');
-        }
-    })
-    .catch((error) => {
-        debugLog('ERRO no redirect: ' + error.code + ' - ' + error.message, true);
-    });
-
-// Auth state observer
+// Auth state observer - detecta quando usuário loga/desloga
 auth.onAuthStateChanged(async (user) => {
     if (user) {
-        debugLog('✓ Usuário logado: ' + user.displayName);
+        console.log('Usuário logado:', user.displayName);
         currentUser = user;
         await saveUserToFirestore(user);
         showMainScreen();
         loadUsers();
         loadExpenses();
     } else {
-        debugLog('Usuário deslogado');
+        console.log('Usuário deslogado');
         currentUser = null;
         showLoginScreen();
     }
+});
+
+// Verificar se voltou de um redirect
+auth.getRedirectResult().then((result) => {
+    if (result.user) {
+        console.log('Login redirect OK:', result.user.displayName);
+    }
+}).catch((error) => {
+    console.error('Erro redirect:', error);
 });
 
 // Salvar usuário no Firestore (auto-cadastro)
@@ -111,19 +72,12 @@ async function saveUserToFirestore(user) {
 
 // Login
 loginButton.addEventListener('click', async () => {
-    debugLog('→ Botão login clicado');
     const provider = new firebase.auth.GoogleAuthProvider();
-    debugLog('→ Provider criado: ' + (provider ? 'OK' : 'ERRO'));
-    
     try {
-        debugLog('→ Chamando signInWithRedirect...');
         await auth.signInWithRedirect(provider);
-        debugLog('✓ Redirect iniciado (página deve redirecionar)');
     } catch (error) {
-        debugLog('ERRO no login: ' + error.code, true);
-        debugLog('Mensagem: ' + error.message, true);
-        debugLog('Stack: ' + error.stack, true);
-        alert('Erro ao fazer login: ' + error.code + '\n\nVeja os detalhes no debug.');
+        console.error('Erro login:', error);
+        alert('Erro: ' + error.message);
     }
 });
 
