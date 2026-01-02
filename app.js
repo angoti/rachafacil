@@ -305,7 +305,15 @@ function validateCustomSum() {
 
 // Foto e OCR
 document.getElementById('takePhotoButton').addEventListener('click', () => {
-    document.getElementById('photoInput').click();
+    const input = document.getElementById('photoInput');
+    input.setAttribute('capture', 'environment'); // Forçar câmera
+    input.click();
+});
+
+document.getElementById('chooseFileButton').addEventListener('click', () => {
+    const input = document.getElementById('photoInput');
+    input.removeAttribute('capture'); // Permitir galeria
+    input.click();
 });
 
 document.getElementById('photoInput').addEventListener('change', handlePhotoSelect);
