@@ -43,26 +43,31 @@ const calculateButton = document.getElementById('calculateButton');
 // Auth state observer - detecta quando usuário loga/desloga
 auth.onAuthStateChanged(async (user) => {
     if (user) {
-        console.log('Usuário logado:', user.displayName);
+        console.log('✅ Usuário logado:', user.displayName);
         currentUser = user;
         await saveUserToFirestore(user);
         showMainScreen();
         loadUsers();
         loadExpenses();
     } else {
-        console.log('Usuário deslogado');
+        console.log('❌ Usuário deslogado');
         currentUser = null;
         showLoginScreen();
     }
 });
 
 // Verificar se voltou de um redirect
+console.log('🔍 Verificando redirect result...');
+console.log('URL atual:', window.location.href);
 auth.getRedirectResult().then((result) => {
-    if (result.user) {
-        console.log('Login redirect OK:', result.user.displayName);
+    console.log('getRedirectResult retornou:', result);
+    if (result && result.user) {
+        console.log('✅ Login redirect OK:', result.user.displayName);
+    } else {
+        console.log('⚠️ Redirect result vazio');
     }
 }).catch((error) => {
-    console.error('Erro redirect:', error);
+    console.error('❌ Erro redirect:', error.code, error.message);
 });
 
 // Salvar usuário no Firestore (auto-cadastro)
@@ -81,12 +86,34 @@ async function saveUserToFirestore(user) {
 
 // Login
 loginButton.addEventListener('click', async () => {
+    console.log('🔐 Iniciando login...');
     const provider = new firebase.auth.GoogleAuthProvider();
+    
     try {
-        await auth.signInWithRedirect(provider);
-    } catch (error) {
-        console.error('Erro login:', error);
-        alert('Erro: ' + error.message);
+        // Tentar popup primeiro (mais confiável no mobile moderno)
+        console.log('Tentando popup...');
+        const result = await auth.signInWithPopup(provider);
+        console.log('✅ Login popup OK:', result.user.displayName);
+    } catch (popupError) {
+        console.log('⚠️ Popup falhou:', popupError.code);
+        
+        // Se popup falhar, usar redirect
+        if (popupError.code === 'auth/popup-blocked' || 
+            popupError.code === 'auth/popup-closed-by-user' ||
+            popupError.code === 'auth/cancelled-popup-request') {
+            
+            console.log('🔄 Tentando redirect...');
+            try {
+                await auth.signInWithRedirect(provider);
+                console.log('✅ Redirect iniciado');
+            } catch (redirectError) {
+                console.error('❌ Erro redirect:', redirectError);
+                alert('Erro: ' + redirectError.message);
+            }
+        } else {
+            console.error('❌ Erro login:', popupError);
+            alert('Erro: ' + popupError.message);
+        }
     }
 });
 
