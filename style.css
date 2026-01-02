@@ -367,6 +367,19 @@ body {
     font-weight: 500;
 }
 
+.expense-datetime {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-top: 0.25rem;
+}
+
+.expense-datetime .material-icons {
+    font-size: 14px;
+}
+
 .expense-value {
     font-size: 1.25rem;
     font-weight: 700;
