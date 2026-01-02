@@ -37,10 +37,13 @@ body {
 
 /* Login Screen */
 #loginScreen {
-    display: flex;
     align-items: center;
     justify-content: center;
     background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+}
+
+#loginScreen.active {
+    display: flex;
 }
 
 .login-container {
