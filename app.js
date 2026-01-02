@@ -218,11 +218,19 @@ addExpenseButton.addEventListener('click', () => {
     editingExpenseId = null;
     document.getElementById('modalTitle').textContent = 'Nova Despesa';
     resetExpenseForm();
+    
+    // Preencher data e hora atual
+    const now = new Date();
+    document.getElementById('expenseDate').value = now.toISOString().split('T')[0];
+    document.getElementById('expenseTime').value = now.toTimeString().slice(0, 5);
+    
     openModal(expenseModal);
 });
 
 function resetExpenseForm() {
     document.getElementById('expenseDescription').value = '';
+    document.getElementById('expenseDate').value = '';
+    document.getElementById('expenseTime').value = '';
     document.getElementById('expenseValue').value = '';
     document.getElementById('paidBy').value = '';
     document.querySelectorAll('.participant-checkbox').forEach(cb => cb.checked = false);
@@ -362,12 +370,36 @@ async function performOCR(imageData) {
         });
 
         const text = result.data.text;
-        const value = extractValue(text);
+        console.log('📄 Texto OCR:', text);
         
+        // Extrair valor
+        const value = extractValue(text);
         if (value) {
             document.getElementById('expenseValue').value = value.toFixed(2);
             updateCustomValuesInputs();
         }
+        
+        // Extrair data
+        const date = extractDate(text);
+        if (date) {
+            document.getElementById('expenseDate').value = date;
+            console.log('📅 Data extraída:', date);
+        }
+        
+        // Extrair hora
+        const time = extractTime(text);
+        if (time) {
+            document.getElementById('expenseTime').value = time;
+            console.log('🕐 Hora extraída:', time);
+        }
+        
+        // Extrair descrição (primeira linha significativa)
+        const description = extractDescription(text);
+        if (description) {
+            document.getElementById('expenseDescription').value = description;
+            console.log('📝 Descrição extraída:', description);
+        }
+        
     } catch (error) {
         console.error('Erro no OCR:', error);
     } finally {
@@ -392,11 +424,103 @@ function extractValue(text) {
     return null;
 }
 
+function extractDate(text) {
+    // Formatos: DD/MM/YYYY, DD-MM-YYYY, DD.MM.YYYY
+    const patterns = [
+        /(\d{2})[\/\-\.](\d{2})[\/\-\.](\d{4})/,  // DD/MM/YYYY
+        /(\d{2})[\/\-\.](\d{2})[\/\-\.](\d{2})/   // DD/MM/YY
+    ];
+
+    for (const pattern of patterns) {
+        const match = text.match(pattern);
+        if (match) {
+            let day = match[1];
+            let month = match[2];
+            let year = match[3];
+            
+            // Se ano tem 2 dígitos, assumir 20XX
+            if (year.length === 2) {
+                year = '20' + year;
+            }
+            
+            // Validar data
+            const d = parseInt(day);
+            const m = parseInt(month);
+            const y = parseInt(year);
+            
+            if (d >= 1 && d <= 31 && m >= 1 && m <= 12 && y >= 2020 && y <= 2030) {
+                return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+            }
+        }
+    }
+    return null;
+}
+
+function extractTime(text) {
+    // Formatos: HH:MM, HH:MM:SS
+    const patterns = [
+        /(\d{2}):(\d{2})(?::\d{2})?/g
+    ];
+
+    for (const pattern of patterns) {
+        const matches = [...text.matchAll(pattern)];
+        for (const match of matches) {
+            const hour = parseInt(match[1]);
+            const minute = parseInt(match[2]);
+            
+            // Validar horário (00:00 a 23:59)
+            if (hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59) {
+                return `${match[1]}:${match[2]}`;
+            }
+        }
+    }
+    return null;
+}
+
+function extractDescription(text) {
+    // Pegar primeira linha não vazia com mais de 3 caracteres
+    // Ignorar linhas que parecem ser cabeçalhos de nota fiscal
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    
+    const ignorePatterns = [
+        /^cnpj/i,
+        /^cpf/i,
+        /^nota fiscal/i,
+        /^cupom/i,
+        /^recibo/i,
+        /^\d+$/,  // Apenas números
+        /^data:/i,
+        /^hora:/i
+    ];
+    
+    for (const line of lines) {
+        // Ignorar linhas muito curtas ou que batem com padrões a ignorar
+        if (line.length < 3) continue;
+        
+        let shouldIgnore = false;
+        for (const pattern of ignorePatterns) {
+            if (pattern.test(line)) {
+                shouldIgnore = true;
+                break;
+            }
+        }
+        
+        if (!shouldIgnore) {
+            // Limitar a 50 caracteres
+            return line.slice(0, 50);
+        }
+    }
+    
+    return null;
+}
+
 // Salvar despesa
 document.getElementById('saveExpenseButton').addEventListener('click', saveExpense);
 
 async function saveExpense() {
     const description = document.getElementById('expenseDescription').value.trim();
+    const expenseDate = document.getElementById('expenseDate').value;
+    const expenseTime = document.getElementById('expenseTime').value;
     const totalValue = parseFloat(document.getElementById('expenseValue').value);
     const paidBy = document.getElementById('paidBy').value;
     const selectedCheckboxes = Array.from(document.querySelectorAll('.participant-checkbox:checked'));
@@ -405,6 +529,14 @@ async function saveExpense() {
     // Validações
     if (!description) {
         alert('Preencha a descrição');
+        return;
+    }
+    if (!expenseDate) {
+        alert('Informe a data');
+        return;
+    }
+    if (!expenseTime) {
+        alert('Informe o horário');
         return;
     }
     if (!totalValue || totalValue <= 0) {
@@ -443,14 +575,21 @@ async function saveExpense() {
         });
     }
 
+    // Criar timestamp combinando data e hora
+    const dateTimeString = `${expenseDate}T${expenseTime}:00`;
+    const timestamp = new Date(dateTimeString);
+
     // Salvar no Firestore
     try {
         const expenseData = {
             description,
+            date: expenseDate,
+            time: expenseTime,
+            timestamp: firebase.firestore.Timestamp.fromDate(timestamp),
             totalValue,
             paidBy,
             splits,
-            imageBase64: currentPhotoBase64, // Salvar base64 diretamente
+            imageBase64: currentPhotoBase64,
             createdBy: currentUser.uid,
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         };
@@ -480,6 +619,13 @@ function loadExpenses() {
     });
 }
 
+// Formatar data para exibição
+function formatDate(dateString) {
+    if (!dateString) return '';
+    const [year, month, day] = dateString.split('-');
+    return `${day}/${month}/${year}`;
+}
+
 // Renderizar despesas
 function renderExpenses() {
     const expensesList = document.getElementById('expensesList');
@@ -503,7 +649,15 @@ function renderExpenses() {
                 ` : ''}
                 <div class="expense-content">
                     <div class="expense-header">
-                        <h3>${expense.description}</h3>
+                        <div>
+                            <h3>${expense.description}</h3>
+                            ${expense.date && expense.time ? `
+                                <div class="expense-datetime">
+                                    <span class="material-icons">event</span>
+                                    ${formatDate(expense.date)} às ${expense.time}
+                                </div>
+                            ` : ''}
+                        </div>
                         <div class="expense-value">R$ ${expense.totalValue.toFixed(2)}</div>
                     </div>
                     <div class="expense-info">
@@ -550,6 +704,8 @@ function editExpense(expenseId) {
     document.getElementById('modalTitle').textContent = 'Editar Despesa';
     
     document.getElementById('expenseDescription').value = expense.description;
+    document.getElementById('expenseDate').value = expense.date || '';
+    document.getElementById('expenseTime').value = expense.time || '';
     document.getElementById('expenseValue').value = expense.totalValue;
     document.getElementById('paidBy').value = expense.paidBy;
 
