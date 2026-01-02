@@ -8,21 +8,43 @@ const firebaseConfig = {
     appId: "1:506462611230:web:1d86bd48b3e8e05e9c6739"
 };
 
+// Debug visual
+const debugConsole = document.getElementById('debugConsole');
+const toggleDebugBtn = document.getElementById('toggleDebug');
+
+function debugLog(message, isError = false) {
+    const timestamp = new Date().toLocaleTimeString();
+    const color = isError ? '#ff5555' : '#00ff00';
+    debugConsole.innerHTML += `<div style="color: ${color}">[${timestamp}] ${message}</div>`;
+    debugConsole.scrollTop = debugConsole.scrollHeight;
+    console.log(message);
+}
+
+toggleDebugBtn.addEventListener('click', () => {
+    if (debugConsole.style.display === 'none') {
+        debugConsole.style.display = 'block';
+        toggleDebugBtn.textContent = 'Ocultar Debug';
+    } else {
+        debugConsole.style.display = 'none';
+        toggleDebugBtn.textContent = 'Mostrar Debug';
+    }
+});
+
 // Verificar se Firebase está disponível
 if (typeof firebase === 'undefined') {
-    console.error('ERRO: Firebase não carregou!');
+    debugLog('ERRO: Firebase não carregou!', true);
     alert('Erro ao carregar Firebase. Recarregue a página.');
 } else {
-    console.log('Firebase disponível:', firebase.SDK_VERSION);
+    debugLog('✓ Firebase disponível: v' + firebase.SDK_VERSION);
 }
 
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-console.log('Firebase inicializado');
-console.log('Auth:', auth);
-console.log('DB:', db);
+debugLog('✓ Firebase inicializado');
+debugLog('✓ Auth: ' + (auth ? 'OK' : 'ERRO'));
+debugLog('✓ DB: ' + (db ? 'OK' : 'ERRO'));
 
 // Estado global
 let currentUser = null;
@@ -44,25 +66,30 @@ const settlementModal = document.getElementById('settlementModal');
 const calculateButton = document.getElementById('calculateButton');
 
 // Verificar resultado do redirect ao carregar a página
+debugLog('Verificando redirect result...');
 auth.getRedirectResult()
     .then((result) => {
         if (result.user) {
-            console.log('Login bem-sucedido via redirect');
+            debugLog('✓ Login via redirect: ' + result.user.displayName);
+        } else {
+            debugLog('Nenhum redirect pendente');
         }
     })
     .catch((error) => {
-        console.error('Erro no redirect:', error);
+        debugLog('ERRO no redirect: ' + error.code + ' - ' + error.message, true);
     });
 
 // Auth state observer
 auth.onAuthStateChanged(async (user) => {
     if (user) {
+        debugLog('✓ Usuário logado: ' + user.displayName);
         currentUser = user;
         await saveUserToFirestore(user);
         showMainScreen();
         loadUsers();
         loadExpenses();
     } else {
+        debugLog('Usuário deslogado');
         currentUser = null;
         showLoginScreen();
     }
@@ -84,19 +111,19 @@ async function saveUserToFirestore(user) {
 
 // Login
 loginButton.addEventListener('click', async () => {
-    console.log('Botão de login clicado');
+    debugLog('→ Botão login clicado');
     const provider = new firebase.auth.GoogleAuthProvider();
-    console.log('Provider criado:', provider);
+    debugLog('→ Provider criado: ' + (provider ? 'OK' : 'ERRO'));
     
     try {
-        console.log('Chamando signInWithRedirect...');
+        debugLog('→ Chamando signInWithRedirect...');
         await auth.signInWithRedirect(provider);
-        console.log('signInWithRedirect chamado - deve redirecionar agora');
+        debugLog('✓ Redirect iniciado (página deve redirecionar)');
     } catch (error) {
-        console.error('ERRO capturado:', error);
-        console.error('Código do erro:', error.code);
-        console.error('Mensagem:', error.message);
-        alert('Erro ao fazer login. Tente novamente.');
+        debugLog('ERRO no login: ' + error.code, true);
+        debugLog('Mensagem: ' + error.message, true);
+        debugLog('Stack: ' + error.stack, true);
+        alert('Erro ao fazer login: ' + error.code + '\n\nVeja os detalhes no debug.');
     }
 });
 
