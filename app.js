@@ -8,9 +8,21 @@ const firebaseConfig = {
     appId: "1:506462611230:web:1d86bd48b3e8e05e9c6739"
 };
 
+// Verificar se Firebase está disponível
+if (typeof firebase === 'undefined') {
+    console.error('ERRO: Firebase não carregou!');
+    alert('Erro ao carregar Firebase. Recarregue a página.');
+} else {
+    console.log('Firebase disponível:', firebase.SDK_VERSION);
+}
+
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
+
+console.log('Firebase inicializado');
+console.log('Auth:', auth);
+console.log('DB:', db);
 
 // Estado global
 let currentUser = null;
@@ -72,11 +84,18 @@ async function saveUserToFirestore(user) {
 
 // Login
 loginButton.addEventListener('click', async () => {
+    console.log('Botão de login clicado');
     const provider = new firebase.auth.GoogleAuthProvider();
+    console.log('Provider criado:', provider);
+    
     try {
+        console.log('Chamando signInWithRedirect...');
         await auth.signInWithRedirect(provider);
+        console.log('signInWithRedirect chamado - deve redirecionar agora');
     } catch (error) {
-        console.error('Erro no login:', error);
+        console.error('ERRO capturado:', error);
+        console.error('Código do erro:', error.code);
+        console.error('Mensagem:', error.message);
         alert('Erro ao fazer login. Tente novamente.');
     }
 });
