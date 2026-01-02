@@ -126,13 +126,18 @@ logoutButton.addEventListener('click', async () => {
 
 // Navegação de telas
 function showLoginScreen() {
+    console.log('📱 Mostrando tela de login');
     loginScreen.classList.add('active');
     mainScreen.classList.remove('active');
 }
 
 function showMainScreen() {
+    console.log('📱 Mostrando tela principal');
+    console.log('loginScreen:', loginScreen);
+    console.log('mainScreen:', mainScreen);
     loginScreen.classList.remove('active');
     mainScreen.classList.add('active');
+    console.log('✅ Tela principal deve estar visível agora');
 }
 
 // Tabs
