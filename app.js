@@ -62,16 +62,22 @@ document.querySelectorAll('.sort-btn').forEach(btn => {
 
 // Auth
 auth.onAuthStateChanged(async (user) => {
+    console.log('🔔 onAuthStateChanged disparou');
+    console.log('User:', user ? user.email : 'null');
+    
     if (user) {
         currentUser = user;
         isAdmin = user.email === ADMIN_EMAIL;
+        console.log('→ Salvando no Firestore...');
         await saveUserToFirestore(user);
+        console.log('→ Chamando showMainScreen...');
         showMainScreen();
         loadUsers();
         loadExpenses();
     } else {
         currentUser = null;
         isAdmin = false;
+        console.log('→ Chamando showLoginScreen...');
         showLoginScreen();
     }
 });
@@ -105,11 +111,13 @@ logoutButton.addEventListener('click', async () => {
 
 // Navegação de telas
 function showLoginScreen() {
+    console.log('📱 showLoginScreen executado');
     loginScreen.classList.add('active');
     mainScreen.classList.remove('active');
 }
 
 function showMainScreen() {
+    console.log('📱 showMainScreen executado');
     loginScreen.classList.remove('active');
     mainScreen.classList.add('active');
     
@@ -317,9 +325,9 @@ async function handlePhotoSelect(e) {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Verificar tamanho do arquivo (limite: 1MB para evitar Firestore muito pesado)
-    if (file.size > 1024 * 1024) {
-        alert('Imagem muito grande! Por favor, escolha uma imagem menor que 1MB.');
+    // Verificar tamanho do arquivo (limite: 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+        alert('Imagem muito grande! Por favor, escolha uma imagem menor que 2MB.');
         return;
     }
 
@@ -417,6 +425,8 @@ function extractDate(text) {
     // Múltiplos formatos de data
     const patterns = [
         // DD/MM/YYYY ou DD-MM-YYYY ou DD.MM.YYYY
+        // "em DD/MM" - notificações de banco
+        /em\s+(\d{1,2})[\/\-\.](\d{1,2})/gi,
         /(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})/g,
         // DD/MM/YY ou DD-MM-YY
         /(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2})(?!\d)/g,
@@ -488,6 +498,8 @@ function extractTime(text) {
     const patterns = [
         // Com palavra "hora" ou "horário"
         /(?:hora|horário|time)[:\s]*(\d{1,2})[:\.](\d{2})/gi,
+        // "as 12h18" ou "12h18"
+        /(?:as\s+)?(\d{1,2})h(\d{2})/gi,
         // Formato padrão HH:MM ou HH.MM
         /\b(\d{1,2})[:\.](\d{2})\b/g,
         // Com segundos HH:MM:SS
