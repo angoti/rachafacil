@@ -27,6 +27,7 @@ let allUsers = [];
 let allExpenses = [];
 let editingExpenseId = null;
 let currentPhotoBase64 = null;
+let currentSortBy = 'date'; // 'date' ou 'value'
 
 // Elementos DOM - buscar quando o script rodar (HTML já carregou pois script está no final)
 const loginScreen = document.getElementById('loginScreen');
@@ -39,6 +40,21 @@ const addExpenseButton = document.getElementById('addExpenseButton');
 const expenseModal = document.getElementById('expenseModal');
 const settlementModal = document.getElementById('settlementModal');
 const calculateButton = document.getElementById('calculateButton');
+
+// Listeners para ordenação
+document.querySelectorAll('.sort-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const sortBy = btn.dataset.sort;
+        currentSortBy = sortBy;
+        
+        // Atualizar botões ativos
+        document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        
+        // Re-renderizar lista
+        renderExpenses();
+    });
+});
 
 // Auth state observer - detecta quando usuário loga/desloga
 auth.onAuthStateChanged(async (user) => {
@@ -744,13 +760,28 @@ function renderExpenses() {
         return;
     }
 
+    // Ordenar despesas
+    const sortedExpenses = [...allExpenses].sort((a, b) => {
+        if (currentSortBy === 'value') {
+            // Ordenar por valor (maior para menor)
+            return b.totalValue - a.totalValue;
+        } else {
+            // Ordenar por data/hora (mais recente primeiro)
+            const timeA = a.timestamp ? a.timestamp.toMillis() : a.createdAt?.toMillis() || 0;
+            const timeB = b.timestamp ? b.timestamp.toMillis() : b.createdAt?.toMillis() || 0;
+            return timeB - timeA;
+        }
+    });
+
     emptyExpenses.style.display = 'none';
-    expensesList.innerHTML = allExpenses.map(expense => {
+    expensesList.innerHTML = sortedExpenses.map((expense, index) => {
         const payer = allUsers.find(u => u.id === expense.paidBy);
         const participantsCount = Object.keys(expense.splits).length;
+        const expenseNumber = index + 1; // Numeração sequencial
         
         return `
             <div class="expense-card">
+                <div class="expense-number">${expenseNumber}</div>
                 ${expense.imageBase64 ? `
                     <img src="${expense.imageBase64}" alt="Recibo" class="expense-image">
                 ` : ''}
