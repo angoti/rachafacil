@@ -63,12 +63,12 @@ document.querySelectorAll('.sort-btn').forEach(btn => {
 // Auth state observer - detecta quando usuário loga/desloga
 auth.onAuthStateChanged(async (user) => {
     if (user) {
-        console.log('✅ Usuário logado:', user.displayName);
+        console.log('Usuário logado:', user.displayName);
         currentUser = user;
         isAdmin = user.email === ADMIN_EMAIL;
         
         if (isAdmin) {
-            console.log('👑 Usuário é ADMIN');
+            console.log('Admin:', user.email);
         }
         
         await saveUserToFirestore(user);
@@ -76,7 +76,7 @@ auth.onAuthStateChanged(async (user) => {
         loadUsers();
         loadExpenses();
     } else {
-        console.log('❌ Usuário deslogado');
+        console.log('Usuário deslogado');
         currentUser = null;
         isAdmin = false;
         showLoginScreen();
@@ -84,18 +84,15 @@ auth.onAuthStateChanged(async (user) => {
 });
 
 // Verificar se voltou de um redirect
-console.log('🔍 Verificando redirect result...');
-console.log('URL atual:', window.location.href);
-auth.getRedirectResult().then((result) => {
-    console.log('getRedirectResult retornou:', result);
-    if (result && result.user) {
-        console.log('✅ Login redirect OK:', result.user.displayName);
-    } else {
-        console.log('⚠️ Redirect result vazio');
-    }
-}).catch((error) => {
-    console.error('❌ Erro redirect:', error.code, error.message);
-});
+auth.getRedirectResult()
+    .then((result) => {
+        if (result && result.user) {
+            console.log('Login OK:', result.user.displayName);
+        }
+    })
+    .catch((error) => {
+        console.error('Erro redirect:', error);
+    });
 
 // Salvar usuário no Firestore (auto-cadastro)
 async function saveUserToFirestore(user) {
@@ -111,36 +108,14 @@ async function saveUserToFirestore(user) {
     }
 }
 
-// Login
+// Login - APENAS redirect (mais confiável no mobile)
 loginButton.addEventListener('click', async () => {
-    console.log('🔐 Iniciando login...');
     const provider = new firebase.auth.GoogleAuthProvider();
-    
     try {
-        // Tentar popup primeiro (mais confiável no mobile moderno)
-        console.log('Tentando popup...');
-        const result = await auth.signInWithPopup(provider);
-        console.log('✅ Login popup OK:', result.user.displayName);
-    } catch (popupError) {
-        console.log('⚠️ Popup falhou:', popupError.code);
-        
-        // Se popup falhar, usar redirect
-        if (popupError.code === 'auth/popup-blocked' || 
-            popupError.code === 'auth/popup-closed-by-user' ||
-            popupError.code === 'auth/cancelled-popup-request') {
-            
-            console.log('🔄 Tentando redirect...');
-            try {
-                await auth.signInWithRedirect(provider);
-                console.log('✅ Redirect iniciado');
-            } catch (redirectError) {
-                console.error('❌ Erro redirect:', redirectError);
-                alert('Erro: ' + redirectError.message);
-            }
-        } else {
-            console.error('❌ Erro login:', popupError);
-            alert('Erro: ' + popupError.message);
-        }
+        await auth.signInWithRedirect(provider);
+    } catch (error) {
+        console.error('Erro login:', error);
+        alert('Erro ao fazer login: ' + error.message);
     }
 });
 
@@ -159,9 +134,6 @@ function showLoginScreen() {
 }
 
 function showMainScreen() {
-    console.log('📱 Mostrando tela principal');
-    console.log('loginScreen:', loginScreen);
-    console.log('mainScreen:', mainScreen);
     loginScreen.classList.remove('active');
     mainScreen.classList.add('active');
     
@@ -169,8 +141,6 @@ function showMainScreen() {
     if (currentUser && currentUser.photoURL) {
         document.getElementById('userAvatarImg').src = currentUser.photoURL;
     }
-    
-    console.log('✅ Tela principal deve estar visível agora');
 }
 
 // Tabs
