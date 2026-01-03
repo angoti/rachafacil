@@ -28,6 +28,10 @@ let allExpenses = [];
 let editingExpenseId = null;
 let currentPhotoBase64 = null;
 let currentSortBy = 'date'; // 'date' ou 'value'
+let isAdmin = false; // Verificar se é admin
+
+// Email do admin
+const ADMIN_EMAIL = 'angoti@gmail.com';
 
 // Elementos DOM - buscar quando o script rodar (HTML já carregou pois script está no final)
 const loginScreen = document.getElementById('loginScreen');
@@ -61,6 +65,12 @@ auth.onAuthStateChanged(async (user) => {
     if (user) {
         console.log('✅ Usuário logado:', user.displayName);
         currentUser = user;
+        isAdmin = user.email === ADMIN_EMAIL;
+        
+        if (isAdmin) {
+            console.log('👑 Usuário é ADMIN');
+        }
+        
         await saveUserToFirestore(user);
         showMainScreen();
         loadUsers();
@@ -68,6 +78,7 @@ auth.onAuthStateChanged(async (user) => {
     } else {
         console.log('❌ Usuário deslogado');
         currentUser = null;
+        isAdmin = false;
         showLoginScreen();
     }
 });
@@ -202,9 +213,17 @@ function renderParticipants() {
         <div class="participant-card">
             <img src="${user.photoURL || 'https://via.placeholder.com/50'}" alt="${user.name}" class="participant-photo">
             <div class="participant-info">
-                <div class="participant-name">${user.name}</div>
+                <div class="participant-name">
+                    ${user.name}
+                    ${user.email === ADMIN_EMAIL ? '<span class="admin-badge">👑 Admin</span>' : ''}
+                </div>
                 <div class="participant-email">${user.email}</div>
             </div>
+            ${isAdmin && user.email !== ADMIN_EMAIL ? `
+                <button class="btn-icon-small btn-delete-user" onclick="deleteUser('${user.id}', '${user.name}')">
+                    <span class="material-icons">delete</span>
+                </button>
+            ` : ''}
         </div>
     `).join('');
 }
@@ -712,14 +731,16 @@ async function saveExpense() {
             totalValue,
             paidBy,
             splits,
-            imageBase64: currentPhotoBase64,
-            createdBy: currentUser.uid,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            imageBase64: currentPhotoBase64
         };
 
         if (editingExpenseId) {
+            // Ao editar, não incluir createdBy e createdAt
             await db.collection('expenses').doc(editingExpenseId).update(expenseData);
         } else {
+            // Ao criar, incluir createdBy e createdAt
+            expenseData.createdBy = currentUser.uid;
+            expenseData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
             await db.collection('expenses').add(expenseData);
         }
 
@@ -727,7 +748,7 @@ async function saveExpense() {
         resetExpenseForm();
     } catch (error) {
         console.error('Erro ao salvar despesa:', error);
-        alert('Erro ao salvar despesa. Tente novamente.');
+        alert('Erro ao salvar despesa: ' + error.message);
     }
 }
 
@@ -820,14 +841,16 @@ function renderExpenses() {
                         }).join('')}
                     </div>
                 </div>
-                <div class="expense-actions">
-                    <button class="btn-icon-small" onclick="editExpense('${expense.id}')">
-                        <span class="material-icons">edit</span>
-                    </button>
-                    <button class="btn-icon-small" onclick="deleteExpense('${expense.id}')">
-                        <span class="material-icons">delete</span>
-                    </button>
-                </div>
+                ${isAdmin ? `
+                    <div class="expense-actions">
+                        <button class="btn-icon-small" onclick="editExpense('${expense.id}')">
+                            <span class="material-icons">edit</span>
+                        </button>
+                        <button class="btn-icon-small" onclick="deleteExpense('${expense.id}')">
+                            <span class="material-icons">delete</span>
+                        </button>
+                    </div>
+                ` : ''}
             </div>
         `;
     }).join('');
@@ -835,6 +858,11 @@ function renderExpenses() {
 
 // Editar despesa
 function editExpense(expenseId) {
+    if (!isAdmin) {
+        alert('Apenas o administrador pode editar despesas.');
+        return;
+    }
+    
     const expense = allExpenses.find(e => e.id === expenseId);
     if (!expense) return;
 
@@ -885,6 +913,11 @@ function editExpense(expenseId) {
 
 // Deletar despesa
 async function deleteExpense(expenseId) {
+    if (!isAdmin) {
+        alert('Apenas o administrador pode deletar despesas.');
+        return;
+    }
+    
     if (!confirm('Deseja realmente excluir esta despesa?')) return;
 
     try {
@@ -892,6 +925,33 @@ async function deleteExpense(expenseId) {
     } catch (error) {
         console.error('Erro ao deletar despesa:', error);
         alert('Erro ao deletar despesa. Tente novamente.');
+    }
+}
+
+// Deletar usuário (apenas admin)
+async function deleteUser(userId, userName) {
+    if (!isAdmin) {
+        alert('Apenas o administrador pode remover usuários.');
+        return;
+    }
+
+    if (!confirm(`Deseja realmente remover ${userName} do racha?\n\nIsso também removerá todas as despesas criadas por este usuário.`)) {
+        return;
+    }
+
+    try {
+        // Deletar usuário
+        await db.collection('users').doc(userId).delete();
+        
+        // Deletar despesas criadas pelo usuário
+        const expensesSnapshot = await db.collection('expenses').where('createdBy', '==', userId).get();
+        const deletePromises = expensesSnapshot.docs.map(doc => doc.ref.delete());
+        await Promise.all(deletePromises);
+        
+        alert(`${userName} foi removido com sucesso.`);
+    } catch (error) {
+        console.error('Erro ao deletar usuário:', error);
+        alert('Erro ao deletar usuário: ' + error.message);
     }
 }
 
