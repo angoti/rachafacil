@@ -244,6 +244,13 @@ body {
     transition: all 0.3s;
 }
 
+.btn-primary:focus,
+.btn-secondary:focus,
+.btn-calculate:focus {
+    outline: 3px solid rgba(76, 175, 80, 0.5);
+    outline-offset: 2px;
+}
+
 .btn-primary {
     background: var(--primary-color);
     color: white;
@@ -293,6 +300,11 @@ body {
     background: rgba(255,255,255,0.3);
 }
 
+.btn-icon:focus {
+    outline: 2px solid white;
+    outline-offset: 2px;
+}
+
 .btn-icon-small {
     width: 32px;
     height: 32px;
@@ -310,6 +322,11 @@ body {
 .btn-icon-small:hover {
     background: var(--border-color);
     color: var(--text-primary);
+}
+
+.btn-icon-small:focus {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
 }
 
 .btn-photo {
@@ -359,6 +376,11 @@ body {
 .fab:hover {
     background: var(--primary-dark);
     transform: scale(1.1) rotate(90deg);
+}
+
+.fab:focus {
+    outline: 3px solid rgba(76, 175, 80, 0.5);
+    outline-offset: 2px;
 }
 
 .fab .material-icons {

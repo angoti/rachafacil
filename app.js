@@ -35,19 +35,6 @@ let isAdmin = false; // Verificar se é admin
 // Email do admin
 const ADMIN_EMAIL = 'angoti@gmail.com';
 
-// Helper function para escapar HTML e prevenir XSS
-function escapeHtml(text) {
-    if (!text) return '';
-    const map = {
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#039;'
-    };
-    return text.toString().replace(/[&<>"']/g, m => map[m]);
-}
-
 // Elementos DOM
 const loginScreen = document.getElementById('loginScreen');
 const mainScreen = document.getElementById('mainScreen');
@@ -159,10 +146,37 @@ function showMainScreen() {
 tabs.forEach(tab => {
     tab.addEventListener('click', () => {
         const tabName = tab.dataset.tab;
-        tabs.forEach(t => t.classList.remove('active'));
+        
+        // Update all tabs and panels
+        tabs.forEach(t => {
+            t.classList.remove('active');
+            t.setAttribute('aria-selected', 'false');
+        });
         tabContents.forEach(tc => tc.classList.remove('active'));
+        
+        // Activate selected tab and panel
         tab.classList.add('active');
+        tab.setAttribute('aria-selected', 'true');
         document.getElementById(tabName + 'Tab').classList.add('active');
+    });
+    
+    // Keyboard navigation for tabs
+    tab.addEventListener('keydown', (e) => {
+        let targetTab = null;
+        
+        if (e.key === 'ArrowRight') {
+            targetTab = tab.nextElementSibling;
+            if (!targetTab) targetTab = tabs[0]; // Loop to first
+        } else if (e.key === 'ArrowLeft') {
+            targetTab = tab.previousElementSibling;
+            if (!targetTab) targetTab = tabs[tabs.length - 1]; // Loop to last
+        }
+        
+        if (targetTab) {
+            targetTab.click();
+            targetTab.focus();
+            e.preventDefault();
+        }
     });
 });
 
@@ -776,15 +790,21 @@ async function saveExpense() {
         }
         
         const customInputs = document.querySelectorAll('.custom-value');
+        let hasNegativeValue = false;
+        
         customInputs.forEach(input => {
             const userId = input.dataset.userId;
             const value = parseFloat(input.value);
             if (value < 0) {
-                alert('Os valores não podem ser negativos');
-                return;
+                hasNegativeValue = true;
             }
             splits[userId] = value;
         });
+        
+        if (hasNegativeValue) {
+            alert('Os valores não podem ser negativos');
+            return;
+        }
     }
 
     // Criar timestamp combinando data e hora
