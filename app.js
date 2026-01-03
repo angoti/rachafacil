@@ -431,15 +431,22 @@ async function handlePhotoSelect(e) {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Verificar tipo do arquivo
-    if (!file.type.startsWith('image/')) {
-        alert('Por favor, selecione uma imagem válida.');
+    // Verificar tipo do arquivo (MIME type e extensão)
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    const validExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+    const fileName = file.name.toLowerCase();
+    const hasValidExtension = validExtensions.some(ext => fileName.endsWith(ext));
+    
+    if (!validTypes.includes(file.type) || !hasValidExtension) {
+        alert('Por favor, selecione uma imagem válida (JPG, PNG, GIF ou WebP).');
+        e.target.value = ''; // Clear the input
         return;
     }
 
     // Verificar tamanho do arquivo (limite: 2MB)
     if (file.size > 2 * 1024 * 1024) {
         alert('Imagem muito grande! Por favor, escolha uma imagem menor que 2MB.');
+        e.target.value = ''; // Clear the input
         return;
     }
 
@@ -458,6 +465,7 @@ async function handlePhotoSelect(e) {
     };
     reader.onerror = () => {
         alert('Erro ao ler o arquivo. Por favor, tente novamente.');
+        e.target.value = ''; // Clear the input
     };
     reader.readAsDataURL(file);
 }
@@ -511,6 +519,7 @@ async function performOCR(imageData) {
         
     } catch (error) {
         console.error('Erro no OCR:', error);
+        alert('Não foi possível processar a imagem. Preencha os dados manualmente.');
     } finally {
         ocrLoading.style.display = 'none';
     }
@@ -790,21 +799,11 @@ async function saveExpense() {
         }
         
         const customInputs = document.querySelectorAll('.custom-value');
-        let hasNegativeValue = false;
-        
         customInputs.forEach(input => {
             const userId = input.dataset.userId;
             const value = parseFloat(input.value);
-            if (value < 0) {
-                hasNegativeValue = true;
-            }
             splits[userId] = value;
         });
-        
-        if (hasNegativeValue) {
-            alert('Os valores não podem ser negativos');
-            return;
-        }
     }
 
     // Criar timestamp combinando data e hora
