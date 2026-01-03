@@ -963,6 +963,7 @@ body {
     .transfer-item {
         flex-direction: column;
         text-align: center;
+        gap: 1rem;
     }
 
     .transfer-from, .transfer-to {
@@ -970,6 +971,11 @@ body {
     }
 
     .transfer-arrow {
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+    
+    .transfer-arrow .material-icons {
         transform: rotate(90deg);
     }
 
