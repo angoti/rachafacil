@@ -62,6 +62,21 @@
 
         <!-- Tab: Despesas -->
         <div id="expensesTab" class="tab-content active">
+            <!-- Controles de ordenação -->
+            <div class="sort-controls">
+                <label>Ordenar por:</label>
+                <div class="sort-buttons">
+                    <button class="sort-btn active" data-sort="date">
+                        <span class="material-icons">event</span>
+                        Data
+                    </button>
+                    <button class="sort-btn" data-sort="value">
+                        <span class="material-icons">attach_money</span>
+                        Valor
+                    </button>
+                </div>
+            </div>
+
             <div class="fab-container">
                 <button id="addExpenseButton" class="fab">
                     <span class="material-icons">add</span>
