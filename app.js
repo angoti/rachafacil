@@ -1076,8 +1076,8 @@ function renderSettlement(balances, transfers) {
                                 <span>${from.name}</span>
                             </div>
                             <div class="transfer-arrow">
-                                <span class="material-icons">arrow_forward</span>
                                 <div class="transfer-amount">R$ ${transfer.amount.toFixed(2)}</div>
+                                <span class="material-icons">arrow_forward</span>
                             </div>
                             <div class="transfer-to">
                                 <img src="${to.photoURL || 'https://via.placeholder.com/40'}" alt="${to.name}">
