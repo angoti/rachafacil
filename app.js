@@ -33,7 +33,7 @@ let isAdmin = false; // Verificar se é admin
 // Email do admin
 const ADMIN_EMAIL = 'angoti@gmail.com';
 
-// Elementos DOM - buscar quando o script rodar (HTML já carregou pois script está no final)
+// Elementos DOM
 const loginScreen = document.getElementById('loginScreen');
 const mainScreen = document.getElementById('mainScreen');
 const loginButton = document.getElementById('loginButton');
@@ -44,13 +44,6 @@ const addExpenseButton = document.getElementById('addExpenseButton');
 const expenseModal = document.getElementById('expenseModal');
 const settlementModal = document.getElementById('settlementModal');
 const calculateButton = document.getElementById('calculateButton');
-
-console.log('Elementos DOM:', {
-    loginScreen: !!loginScreen,
-    mainScreen: !!mainScreen,
-    loginButton: !!loginButton,
-    logoutButton: !!logoutButton
-});
 
 // Listeners para ordenação
 document.querySelectorAll('.sort-btn').forEach(btn => {
@@ -67,35 +60,21 @@ document.querySelectorAll('.sort-btn').forEach(btn => {
     });
 });
 
-// Auth state observer - detecta quando usuário loga/desloga
-console.log('📡 Registrando onAuthStateChanged...');
+// Auth
 auth.onAuthStateChanged(async (user) => {
-    console.log('🔔 onAuthStateChanged CHAMADO!');
-    console.log('👤 User object:', user);
-    
     if (user) {
-        console.log('✅ Usuário ENCONTRADO:', user.displayName, user.email);
         currentUser = user;
         isAdmin = user.email === ADMIN_EMAIL;
-        
-        if (isAdmin) {
-            console.log('👑 É ADMIN:', user.email);
-        }
-        
-        console.log('💾 Salvando no Firestore...');
         await saveUserToFirestore(user);
-        console.log('📱 Chamando showMainScreen()...');
         showMainScreen();
         loadUsers();
         loadExpenses();
     } else {
-        console.log('❌ User é NULL - mostrando login');
         currentUser = null;
         isAdmin = false;
         showLoginScreen();
     }
 });
-
 
 // Salvar usuário no Firestore (auto-cadastro)
 async function saveUserToFirestore(user) {
@@ -111,24 +90,11 @@ async function saveUserToFirestore(user) {
     }
 }
 
-// Login - APENAS popup (sem redirect)
-if (loginButton) {
-    console.log('✓ Botão de login encontrado');
-    loginButton.addEventListener('click', async () => {
-        console.log('🔐 BOTÃO CLICADO!');
-        const provider = new firebase.auth.GoogleAuthProvider();
-        try {
-            console.log('→ Iniciando popup...');
-            const result = await auth.signInWithPopup(provider);
-            console.log('✅ Login popup OK:', result.user.displayName);
-        } catch (error) {
-            console.error('❌ Erro login:', error.code, error.message);
-            alert('Erro ao fazer login: ' + error.message);
-        }
-    });
-} else {
-    console.error('❌ Botão de login NÃO encontrado!');
-}
+// Login
+loginButton.addEventListener('click', async () => {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    await auth.signInWithRedirect(provider);
+});
 
 // Logout
 logoutButton.addEventListener('click', async () => {
@@ -139,23 +105,16 @@ logoutButton.addEventListener('click', async () => {
 
 // Navegação de telas
 function showLoginScreen() {
-    console.log('🔐 showLoginScreen() chamado');
-    console.log('📱 Mostrando tela de login');
     loginScreen.classList.add('active');
     mainScreen.classList.remove('active');
-    console.log('→ loginScreen tem .active');
 }
 
 function showMainScreen() {
-    console.log('📱 showMainScreen() chamado');
     loginScreen.classList.remove('active');
     mainScreen.classList.add('active');
-    console.log('→ mainScreen tem .active');
     
-    // Atualizar avatar do usuário
     if (currentUser && currentUser.photoURL) {
         document.getElementById('userAvatarImg').src = currentUser.photoURL;
-        console.log('→ Avatar atualizado');
     }
 }
 
