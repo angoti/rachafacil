@@ -1079,3 +1079,4 @@ if ('serviceWorker' in navigator) {
         .then(() => console.log('Service Worker registrado'))
         .catch(err => console.error('Erro ao registrar Service Worker:', err));
 }
+
