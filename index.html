@@ -183,7 +183,12 @@
                 <!-- Descrição -->
                 <div class="form-group">
                     <label for="expenseDescription">Descrição</label>
-                    <input type="text" id="expenseDescription" placeholder="Ex: Pizza, Uber, Hotel..." required>
+                    <input type="text" 
+                           id="expenseDescription" 
+                           placeholder="Ex: Pizza, Uber, Hotel..." 
+                           required 
+                           maxlength="100"
+                           aria-describedby="descriptionHelp">
                 </div>
 
                 <!-- Data e Hora -->
@@ -200,13 +205,19 @@
                 <!-- Valor -->
                 <div class="form-group">
                     <label for="expenseValue">Valor Total (R$)</label>
-                    <input type="number" id="expenseValue" step="0.01" placeholder="0,00" required>
+                    <input type="number" 
+                           id="expenseValue" 
+                           step="0.01" 
+                           min="0.01"
+                           placeholder="0,00" 
+                           required
+                           aria-describedby="valueHelp">
                 </div>
 
                 <!-- Quem Pagou -->
                 <div class="form-group">
                     <label for="paidBy">Quem Pagou?</label>
-                    <select id="paidBy" required>
+                    <select id="paidBy" required aria-describedby="paidByHelp">
                         <option value="">Selecione...</option>
                     </select>
                 </div>
@@ -214,7 +225,10 @@
                 <!-- Participantes -->
                 <div class="form-group">
                     <label>Participantes desta Despesa</label>
-                    <div id="participantsCheckboxes" class="checkboxes-container">
+                    <div id="participantsCheckboxes" 
+                         class="checkboxes-container"
+                         role="group"
+                         aria-label="Selecione os participantes">
                         <!-- Checkboxes serão inseridos aqui -->
                     </div>
                 </div>

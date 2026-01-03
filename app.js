@@ -1,4 +1,6 @@
 // Configuração Firebase
+// Note: Firebase API keys are safe to expose in client-side code
+// as they are protected by Firebase security rules
 const firebaseConfig = {
     apiKey: "AIzaSyDj1sXtBjPR1bHi-5bocY6hivgPriIaZxY",
     authDomain: "racha-facil-angoti.firebaseapp.com",
@@ -32,6 +34,19 @@ let isAdmin = false; // Verificar se é admin
 
 // Email do admin
 const ADMIN_EMAIL = 'angoti@gmail.com';
+
+// Helper function para escapar HTML e prevenir XSS
+function escapeHtml(text) {
+    if (!text) return '';
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return text.toString().replace(/[&<>"']/g, m => map[m]);
+}
 
 // Elementos DOM
 const loginScreen = document.getElementById('loginScreen');
@@ -85,27 +100,41 @@ auth.onAuthStateChanged(async (user) => {
 // Salvar usuário no Firestore (auto-cadastro)
 async function saveUserToFirestore(user) {
     try {
+        if (!user || !user.uid) {
+            throw new Error('Usuário inválido');
+        }
         await db.collection('users').doc(user.uid).set({
-            name: user.displayName,
-            email: user.email,
-            photoURL: user.photoURL,
+            name: user.displayName || 'Usuário sem nome',
+            email: user.email || '',
+            photoURL: user.photoURL || '',
             lastLogin: firebase.firestore.FieldValue.serverTimestamp()
         }, { merge: true });
     } catch (error) {
         console.error('Erro ao salvar usuário:', error);
+        alert('Erro ao salvar informações do usuário. Por favor, tente novamente.');
     }
 }
 
 // Login
 loginButton.addEventListener('click', async () => {
-    const provider = new firebase.auth.GoogleAuthProvider();
-    await auth.signInWithRedirect(provider);
+    try {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        await auth.signInWithRedirect(provider);
+    } catch (error) {
+        console.error('Erro ao fazer login:', error);
+        alert('Erro ao fazer login. Por favor, tente novamente.');
+    }
 });
 
 // Logout
 logoutButton.addEventListener('click', async () => {
     if (confirm('Deseja realmente sair?')) {
-        await auth.signOut();
+        try {
+            await auth.signOut();
+        } catch (error) {
+            console.error('Erro ao fazer logout:', error);
+            alert('Erro ao sair. Por favor, tente novamente.');
+        }
     }
 });
 
@@ -147,6 +176,9 @@ function loadUsers() {
         renderParticipants();
         updatePaidBySelect();
         updateParticipantsCheckboxes();
+    }, (error) => {
+        console.error('Erro ao carregar usuários:', error);
+        alert('Erro ao carregar participantes. Recarregue a página.');
     });
 }
 
@@ -162,48 +194,98 @@ function renderParticipants() {
     }
 
     emptyParticipants.style.display = 'none';
-    participantsList.innerHTML = allUsers.map(user => `
-        <div class="participant-card">
-            <img src="${user.photoURL || 'https://via.placeholder.com/50'}" alt="${user.name}" class="participant-photo">
-            <div class="participant-info">
-                <div class="participant-name">
-                    ${user.name}
-                    ${user.email === ADMIN_EMAIL ? '<span class="admin-badge">👑 Admin</span>' : ''}
-                </div>
-                <div class="participant-email">${user.email}</div>
-            </div>
-            ${isAdmin && user.email !== ADMIN_EMAIL ? `
-                <button class="btn-icon-small btn-delete-user" onclick="deleteUser('${user.id}', '${user.name}')">
-                    <span class="material-icons">delete</span>
-                </button>
-            ` : ''}
-        </div>
-    `).join('');
+    
+    // Limpar e adicionar elementos de forma segura
+    participantsList.innerHTML = '';
+    
+    allUsers.forEach(user => {
+        const card = document.createElement('div');
+        card.className = 'participant-card';
+        
+        const img = document.createElement('img');
+        img.src = user.photoURL || 'https://via.placeholder.com/50';
+        img.alt = user.name || 'Participante';
+        img.className = 'participant-photo';
+        
+        const info = document.createElement('div');
+        info.className = 'participant-info';
+        
+        const nameDiv = document.createElement('div');
+        nameDiv.className = 'participant-name';
+        nameDiv.textContent = user.name || 'Sem nome';
+        
+        if (user.email === ADMIN_EMAIL) {
+            const badge = document.createElement('span');
+            badge.className = 'admin-badge';
+            badge.textContent = '👑 Admin';
+            nameDiv.appendChild(badge);
+        }
+        
+        const emailDiv = document.createElement('div');
+        emailDiv.className = 'participant-email';
+        emailDiv.textContent = user.email || '';
+        
+        info.appendChild(nameDiv);
+        info.appendChild(emailDiv);
+        card.appendChild(img);
+        card.appendChild(info);
+        
+        if (isAdmin && user.email !== ADMIN_EMAIL) {
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'btn-icon-small btn-delete-user';
+            deleteBtn.onclick = () => deleteUser(user.id, user.name);
+            
+            const icon = document.createElement('span');
+            icon.className = 'material-icons';
+            icon.textContent = 'delete';
+            
+            deleteBtn.appendChild(icon);
+            card.appendChild(deleteBtn);
+        }
+        
+        participantsList.appendChild(card);
+    });
 }
 
 // Atualizar select "Quem Pagou"
 function updatePaidBySelect() {
     const paidBySelect = document.getElementById('paidBy');
-    paidBySelect.innerHTML = '<option value="">Selecione...</option>' +
-        allUsers.map(user => `
-            <option value="${user.id}">${user.name}</option>
-        `).join('');
+    paidBySelect.innerHTML = '';
+    
+    const defaultOption = document.createElement('option');
+    defaultOption.value = '';
+    defaultOption.textContent = 'Selecione...';
+    paidBySelect.appendChild(defaultOption);
+    
+    allUsers.forEach(user => {
+        const option = document.createElement('option');
+        option.value = user.id;
+        option.textContent = user.name || 'Sem nome';
+        paidBySelect.appendChild(option);
+    });
 }
 
 // Atualizar checkboxes de participantes
 function updateParticipantsCheckboxes() {
     const container = document.getElementById('participantsCheckboxes');
-    container.innerHTML = allUsers.map(user => `
-        <label class="checkbox-option">
-            <input type="checkbox" value="${user.id}" class="participant-checkbox">
-            <span>${user.name}</span>
-        </label>
-    `).join('');
-
-    // Listener para atualizar valores customizados
-    const checkboxes = document.querySelectorAll('.participant-checkbox');
-    checkboxes.forEach(cb => {
-        cb.addEventListener('change', updateCustomValuesInputs);
+    container.innerHTML = '';
+    
+    allUsers.forEach(user => {
+        const label = document.createElement('label');
+        label.className = 'checkbox-option';
+        
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.value = user.id;
+        checkbox.className = 'participant-checkbox';
+        checkbox.addEventListener('change', updateCustomValuesInputs);
+        
+        const span = document.createElement('span');
+        span.textContent = user.name || 'Sem nome';
+        
+        label.appendChild(checkbox);
+        label.appendChild(span);
+        container.appendChild(label);
     });
 }
 
@@ -254,31 +336,41 @@ function updateCustomValuesInputs() {
     const container = document.getElementById('customValuesInputs');
     const totalValue = parseFloat(document.getElementById('expenseValue').value) || 0;
     
+    container.innerHTML = '';
+    
     if (selectedCheckboxes.length === 0) {
-        container.innerHTML = '<p class="text-muted">Selecione os participantes primeiro</p>';
+        const message = document.createElement('p');
+        message.className = 'text-muted';
+        message.textContent = 'Selecione os participantes primeiro';
+        container.appendChild(message);
         return;
     }
 
     const equalShare = totalValue / selectedCheckboxes.length;
 
-    container.innerHTML = selectedCheckboxes.map(cb => {
+    selectedCheckboxes.forEach(cb => {
         const user = allUsers.find(u => u.id === cb.value);
-        return `
-            <div class="custom-value-input">
-                <label>${user.name}</label>
-                <input type="number" 
-                       step="0.01" 
-                       placeholder="0,00" 
-                       value="${equalShare.toFixed(2)}"
-                       data-user-id="${user.id}"
-                       class="custom-value">
-            </div>
-        `;
-    }).join('');
-
-    // Listener para validar soma
-    document.querySelectorAll('.custom-value').forEach(input => {
+        if (!user) return;
+        
+        const div = document.createElement('div');
+        div.className = 'custom-value-input';
+        
+        const label = document.createElement('label');
+        label.textContent = user.name || 'Sem nome';
+        
+        const input = document.createElement('input');
+        input.type = 'number';
+        input.step = '0.01';
+        input.min = '0';
+        input.placeholder = '0,00';
+        input.value = equalShare.toFixed(2);
+        input.dataset.userId = user.id;
+        input.className = 'custom-value';
         input.addEventListener('input', validateCustomSum);
+        
+        div.appendChild(label);
+        div.appendChild(input);
+        container.appendChild(div);
     });
 }
 
@@ -325,6 +417,12 @@ async function handlePhotoSelect(e) {
     const file = e.target.files[0];
     if (!file) return;
 
+    // Verificar tipo do arquivo
+    if (!file.type.startsWith('image/')) {
+        alert('Por favor, selecione uma imagem válida.');
+        return;
+    }
+
     // Verificar tamanho do arquivo (limite: 2MB)
     if (file.size > 2 * 1024 * 1024) {
         alert('Imagem muito grande! Por favor, escolha uma imagem menor que 2MB.');
@@ -343,6 +441,9 @@ async function handlePhotoSelect(e) {
 
         // OCR
         await performOCR(base64Data);
+    };
+    reader.onerror = () => {
+        alert('Erro ao ler o arquivo. Por favor, tente novamente.');
     };
     reader.readAsDataURL(file);
 }
@@ -630,6 +731,10 @@ async function saveExpense() {
         alert('Preencha a descrição');
         return;
     }
+    if (description.length > 100) {
+        alert('Descrição muito longa (máximo 100 caracteres)');
+        return;
+    }
     if (!expenseDate) {
         alert('Informe a data');
         return;
@@ -639,7 +744,11 @@ async function saveExpense() {
         return;
     }
     if (!totalValue || totalValue <= 0) {
-        alert('Informe um valor válido');
+        alert('Informe um valor válido maior que zero');
+        return;
+    }
+    if (totalValue > 1000000) {
+        alert('Valor muito alto (máximo R$ 1.000.000,00)');
         return;
     }
     if (!paidBy) {
@@ -670,6 +779,10 @@ async function saveExpense() {
         customInputs.forEach(input => {
             const userId = input.dataset.userId;
             const value = parseFloat(input.value);
+            if (value < 0) {
+                alert('Os valores não podem ser negativos');
+                return;
+            }
             splits[userId] = value;
         });
     }
@@ -677,6 +790,12 @@ async function saveExpense() {
     // Criar timestamp combinando data e hora
     const dateTimeString = `${expenseDate}T${expenseTime}:00`;
     const timestamp = new Date(dateTimeString);
+    
+    // Validar timestamp
+    if (isNaN(timestamp.getTime())) {
+        alert('Data ou hora inválida');
+        return;
+    }
 
     // Salvar no Firestore
     try {
@@ -717,6 +836,9 @@ function loadExpenses() {
             allExpenses.push({ id: doc.id, ...doc.data() });
         });
         renderExpenses();
+    }, (error) => {
+        console.error('Erro ao carregar despesas:', error);
+        alert('Erro ao carregar despesas. Recarregue a página.');
     });
 }
 
@@ -889,6 +1011,11 @@ async function deleteExpense(expenseId) {
 async function deleteUser(userId, userName) {
     if (!isAdmin) {
         alert('Apenas o administrador pode remover usuários.');
+        return;
+    }
+
+    if (!userId || !userName) {
+        alert('Dados do usuário inválidos.');
         return;
     }
 
