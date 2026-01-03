@@ -400,6 +400,25 @@ body {
 .participant-name {
     font-weight: 500;
     color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.admin-badge {
+    font-size: 0.75rem;
+    color: var(--secondary-color);
+    font-weight: 600;
+}
+
+.btn-delete-user {
+    background: #FFEBEE;
+    color: var(--danger-color);
+}
+
+.btn-delete-user:hover {
+    background: var(--danger-color);
+    color: white;
 }
 
 .participant-email {
