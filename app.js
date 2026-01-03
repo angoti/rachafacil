@@ -561,7 +561,6 @@ function extractDescription(text) {
         /^subtotal/i,
         /^desconto/i,
         /^quantidade/i,
-        /^cod/i,
         /^item/i,
         /^\d+[\/\-\.]\d+[\/\-\.]\d+/,  // Datas
         /^\d+:\d+/,  // Horas
