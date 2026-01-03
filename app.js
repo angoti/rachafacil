@@ -45,6 +45,13 @@ const expenseModal = document.getElementById('expenseModal');
 const settlementModal = document.getElementById('settlementModal');
 const calculateButton = document.getElementById('calculateButton');
 
+console.log('Elementos DOM:', {
+    loginScreen: !!loginScreen,
+    mainScreen: !!mainScreen,
+    loginButton: !!loginButton,
+    logoutButton: !!logoutButton
+});
+
 // Listeners para ordenação
 document.querySelectorAll('.sort-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -109,15 +116,23 @@ async function saveUserToFirestore(user) {
 }
 
 // Login - APENAS redirect (mais confiável no mobile)
-loginButton.addEventListener('click', async () => {
-    const provider = new firebase.auth.GoogleAuthProvider();
-    try {
-        await auth.signInWithRedirect(provider);
-    } catch (error) {
-        console.error('Erro login:', error);
-        alert('Erro ao fazer login: ' + error.message);
-    }
-});
+if (loginButton) {
+    console.log('✓ Botão de login encontrado');
+    loginButton.addEventListener('click', async () => {
+        console.log('🔐 BOTÃO CLICADO!');
+        const provider = new firebase.auth.GoogleAuthProvider();
+        try {
+            console.log('→ Iniciando redirect...');
+            await auth.signInWithRedirect(provider);
+            console.log('→ Redirect chamado');
+        } catch (error) {
+            console.error('❌ Erro login:', error);
+            alert('Erro ao fazer login: ' + error.message);
+        }
+    });
+} else {
+    console.error('❌ Botão de login NÃO encontrado!');
+}
 
 // Logout
 logoutButton.addEventListener('click', async () => {
