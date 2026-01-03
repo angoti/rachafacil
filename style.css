@@ -179,6 +179,57 @@ body {
     display: block;
 }
 
+/* Sort Controls */
+.sort-controls {
+    background: white;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    box-shadow: var(--shadow);
+}
+
+.sort-controls label {
+    font-weight: 500;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+.sort-buttons {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.sort-btn {
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--border-color);
+    background: white;
+    color: var(--text-secondary);
+    border-radius: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.875rem;
+    transition: all 0.3s;
+}
+
+.sort-btn .material-icons {
+    font-size: 18px;
+}
+
+.sort-btn:hover {
+    background: var(--bg-color);
+}
+
+.sort-btn.active {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
 /* Buttons */
 .btn-primary, .btn-secondary, .btn-calculate {
     padding: 0.75rem 1.5rem;
@@ -359,6 +410,34 @@ body {
 /* Expense Card */
 .expense-card {
     position: relative;
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    box-shadow: var(--shadow);
+    transition: all 0.3s;
+}
+
+.expense-card:hover {
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-2px);
+}
+
+.expense-number {
+    position: absolute;
+    top: 0.5rem;
+    left: 0.5rem;
+    background: var(--primary-color);
+    color: white;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.875rem;
+    z-index: 1;
 }
 
 .expense-image {
