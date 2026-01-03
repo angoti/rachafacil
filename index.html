@@ -20,7 +20,7 @@
             </div>
             <h1>Racha Fácil</h1>
             <p class="subtitle">Divida despesas com facilidade</p>
-            <button id="loginButton" class="btn-primary">
+            <button id="loginButton" class="btn-primary" aria-label="Fazer login com sua conta Google">
                 <span class="material-icons">login</span>
                 Entrar com Google
             </button>
@@ -34,14 +34,14 @@
             <div class="header-content">
                 <h1>Racha Fácil</h1>
                 <div class="header-actions">
-                    <button id="calculateButton" class="btn-calculate">
+                    <button id="calculateButton" class="btn-calculate" aria-label="Calcular acerto de contas">
                         <span class="material-icons">calculate</span>
                         Calcular Acerto
                     </button>
-                    <div id="userAvatar" class="user-avatar">
-                        <img id="userAvatarImg" src="" alt="User">
+                    <div id="userAvatar" class="user-avatar" aria-label="Avatar do usuário">
+                        <img id="userAvatarImg" src="" alt="Foto do usuário">
                     </div>
-                    <button id="logoutButton" class="btn-icon">
+                    <button id="logoutButton" class="btn-icon" aria-label="Sair da conta">
                         <span class="material-icons">logout</span>
                     </button>
                 </div>
@@ -49,23 +49,23 @@
         </header>
 
         <!-- Tabs -->
-        <div class="tabs">
-            <button class="tab active" data-tab="expenses">
+        <div class="tabs" role="tablist" aria-label="Navegação principal">
+            <button id="expenses-tab" class="tab active" data-tab="expenses" role="tab" aria-selected="true" aria-controls="expensesTab">
                 <span class="material-icons">receipt</span>
                 Despesas
             </button>
-            <button class="tab" data-tab="participants">
+            <button id="participants-tab" class="tab" data-tab="participants" role="tab" aria-selected="false" aria-controls="participantsTab">
                 <span class="material-icons">people</span>
                 Participantes
             </button>
-            <button class="tab" data-tab="about">
+            <button id="about-tab" class="tab" data-tab="about" role="tab" aria-selected="false" aria-controls="aboutTab">
                 <span class="material-icons">info</span>
                 About
             </button>
         </div>
 
         <!-- Tab: Despesas -->
-        <div id="expensesTab" class="tab-content active">
+        <div id="expensesTab" class="tab-content active" role="tabpanel" aria-labelledby="expenses-tab">
             <!-- Controles de ordenação -->
             <div class="sort-controls">
                 <label>Ordenar por:</label>
@@ -82,7 +82,7 @@
             </div>
 
             <div class="fab-container">
-                <button id="addExpenseButton" class="fab">
+                <button id="addExpenseButton" class="fab" aria-label="Adicionar nova despesa">
                     <span class="material-icons">add</span>
                 </button>
             </div>
@@ -99,7 +99,7 @@
         </div>
 
         <!-- Tab: Participantes -->
-        <div id="participantsTab" class="tab-content">
+        <div id="participantsTab" class="tab-content" role="tabpanel" aria-labelledby="participants-tab">
             <div id="participantsList" class="participants-list">
                 <!-- Participantes serão inseridos aqui -->
             </div>
@@ -112,7 +112,7 @@
         </div>
 
         <!-- Tab: About -->
-        <div id="aboutTab" class="tab-content">
+        <div id="aboutTab" class="tab-content" role="tabpanel" aria-labelledby="about-tab">
             <div class="about-container">
                 <div class="about-header">
                     <span class="material-icons about-icon">flight_takeoff</span>
@@ -183,7 +183,11 @@
                 <!-- Descrição -->
                 <div class="form-group">
                     <label for="expenseDescription">Descrição</label>
-                    <input type="text" id="expenseDescription" placeholder="Ex: Pizza, Uber, Hotel..." required>
+                    <input type="text" 
+                           id="expenseDescription" 
+                           placeholder="Ex: Pizza, Uber, Hotel..." 
+                           required 
+                           maxlength="100">
                 </div>
 
                 <!-- Data e Hora -->
@@ -200,7 +204,12 @@
                 <!-- Valor -->
                 <div class="form-group">
                     <label for="expenseValue">Valor Total (R$)</label>
-                    <input type="number" id="expenseValue" step="0.01" placeholder="0,00" required>
+                    <input type="number" 
+                           id="expenseValue" 
+                           step="0.01" 
+                           min="0.01"
+                           placeholder="0,00" 
+                           required>
                 </div>
 
                 <!-- Quem Pagou -->
@@ -214,7 +223,10 @@
                 <!-- Participantes -->
                 <div class="form-group">
                     <label>Participantes desta Despesa</label>
-                    <div id="participantsCheckboxes" class="checkboxes-container">
+                    <div id="participantsCheckboxes" 
+                         class="checkboxes-container"
+                         role="group"
+                         aria-label="Selecione os participantes">
                         <!-- Checkboxes serão inseridos aqui -->
                     </div>
                 </div>
